@@ -4,67 +4,13 @@ import React, { Component, ReactNode, useRef, useMemo, useState, useEffect } fro
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Stars, Float, OrbitControls, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
+import SkullLoader from '@/components/ui/SkullLoader';
 
 /* ── Fallback Visual when WebGL fails or context is lost ── */
 export function FallbackHeroVisual() {
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-      }}
-    >
-      {/* Outer Glowing Orbital Rings */}
-      <div
-        style={{
-          position: 'absolute',
-          width: 320,
-          height: 320,
-          borderRadius: '50%',
-          border: '1px solid rgba(245, 158, 11, 0.4)',
-          boxShadow: '0 0 50px rgba(245, 158, 11, 0.25)',
-          animation: 'spin-slow 20s linear infinite',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          width: 390,
-          height: 390,
-          borderRadius: '50%',
-          border: '1px dashed rgba(56, 189, 248, 0.35)',
-          animation: 'spin-reverse-slow 25s linear infinite',
-        }}
-      />
-
-      {/* Center 3D Avatar Image */}
-      <div
-        style={{
-          position: 'relative',
-          width: 260,
-          height: 260,
-          borderRadius: '50%',
-          overflow: 'hidden',
-          border: '2px solid rgba(245, 158, 11, 0.6)',
-          boxShadow: '0 0 40px rgba(245, 158, 11, 0.35)',
-          background: '#0d1117',
-        }}
-      >
-        <img
-          src="/api/avatar"
-          alt="3D Developer Avatar"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      </div>
-
-      <style>{`
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes spin-reverse-slow { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
-      `}</style>
+    <div className="w-full h-full flex items-center justify-center relative">
+      <SkullLoader message="LOADING 3D HOLOGRAM PORTAL..." />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import SkullLoader from '@/components/ui/SkullLoader';
 import { Download, Award, ExternalLink, BookOpen, Plus } from 'lucide-react';
 import { createClient } from '../../lib/supabase/client';
 import type { Certification } from '../../types';
@@ -181,7 +182,9 @@ export default function ResumeSection() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {loading ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: 20 }}>Loading certifications...</div>
+                <div style={{ padding: 30, display: 'flex', justifyContent: 'center' }}>
+                  <SkullLoader message="FETCHING CERTIFICATIONS..." />
+                </div>
               ) : certifications.length === 0 ? (
                 <div className="glass-card" style={{ padding: 24, textAlign: 'center', border: '1.5px dashed var(--border)' }}>
                   <Award size={32} style={{ color: 'var(--accent)', opacity: 0.5, margin: '0 auto 10px' }} />

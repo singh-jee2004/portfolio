@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import SkullLoader from '@/components/ui/SkullLoader';
 import { ExternalLink, Star, Layers, FolderOpen } from 'lucide-react';
 import { GithubIcon } from '../ui/Icons';
 import { createClient } from '../../lib/supabase/client';
@@ -189,13 +190,8 @@ export default function ProjectsSection() {
 
         {/* Loading state */}
         {loading && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-              style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto' }}
-            />
-            <p style={{ color: 'var(--text-muted)', marginTop: 16, fontSize: '0.9rem' }}>Loading projects...</p>
+          <div style={{ textAlign: 'center', padding: '40px 0', display: 'flex', justifyContent: 'center' }}>
+            <SkullLoader message="FETCHING PROJECTS DATA..." />
           </div>
         )}
 

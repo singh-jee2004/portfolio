@@ -31,6 +31,9 @@ export const metadata: Metadata = {
   },
 };
 
+import { Suspense } from 'react';
+import GlobalRouteLoader from '@/components/ui/GlobalRouteLoader';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,6 +43,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         <div className="noise-overlay" aria-hidden="true" />
+        <Suspense fallback={null}>
+          <GlobalRouteLoader />
+        </Suspense>
         {children}
         <AIChatbot />
       </body>

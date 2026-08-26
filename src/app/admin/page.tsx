@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import SkullLoader from '@/components/ui/SkullLoader';
 import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home, Award } from 'lucide-react';
 import { createClient } from '../../lib/supabase/client';
 import type { Project, Message, Certification } from '../../types';
@@ -381,7 +382,9 @@ export default function AdminDashboard() {
 
             {/* Projects List */}
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
+              <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
+                <SkullLoader message="LOADING ADMIN PROJECTS..." />
+              </div>
             ) : projects.length === 0 ? (
               <div className="glass-card" style={{ padding: 60, textAlign: 'center' }}>
                 <FolderOpen size={40} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
@@ -469,7 +472,9 @@ export default function AdminDashboard() {
 
             {/* Certifications List */}
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
+              <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
+                <SkullLoader message="LOADING CERTIFICATIONS..." />
+              </div>
             ) : certificates.length === 0 ? (
               <div className="glass-card" style={{ padding: 60, textAlign: 'center' }}>
                 <Award size={40} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
