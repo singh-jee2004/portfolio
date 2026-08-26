@@ -4,9 +4,14 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { ArrowDown, Sparkles } from 'lucide-react';
-import { GithubIcon, LinkedinIcon, TwitterIcon } from '../ui/Icons';
+import { GithubIcon, InstagramIcon } from '../ui/Icons';
 
-const HeroCanvas = dynamic(() => import('../three/HeroCanvas'), { ssr: false });
+import { FallbackHeroVisual } from '../three/HeroCanvas';
+
+const HeroCanvas = dynamic(() => import('../three/HeroCanvas'), {
+  ssr: false,
+  loading: () => <FallbackHeroVisual />,
+});
 
 const TYPING_TEXTS = [
   'Full Stack Developer',
@@ -135,8 +140,7 @@ export default function HeroSection() {
                 marginBottom: 16,
               }}
             >
-              <span className="gradient-text">Tushar</span>{' '}
-              <span style={{ color: 'var(--text-primary)' }}>Singh</span>
+              <span className="gradient-text">Tushar Singh</span>
             </motion.h1>
 
             {/* Typewriter */}
@@ -186,13 +190,14 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              style={{ display: 'flex', alignItems: 'center', gap: 16 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}
             >
               <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', monospace" }}>
                 Find me on:
               </span>
               {[
                 { icon: GithubIcon, href: 'https://github.com/singh-jee2004', label: 'GitHub' },
+                { icon: InstagramIcon, href: 'https://www.instagram.com/_tushar.__singh_/', label: 'Instagram' },
               ].map(({ icon: Icon, href, label }) => (
                 <a key={label} href={href} target="_blank" rel="noopener noreferrer"
                   aria-label={label}

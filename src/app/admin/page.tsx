@@ -2,26 +2,42 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home } from 'lucide-react';
+import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home, Award } from 'lucide-react';
 import { createClient } from '../../lib/supabase/client';
-import type { Project, Message } from '../../types';
+import type { Project, Message, Certification } from '../../types';
 
-type Tab = 'projects' | 'messages' | 'profile' | 'resume';
+type Tab = 'projects' | 'certificates' | 'messages' | 'resume';
 
 const EMPTY_PROJECT: Omit<Project, 'id' | 'created_at'> = {
   title: '', description: '', image_url: null,
   github_url: null, live_url: null, tech_stack: [], featured: false,
 };
 
+const EMPTY_CERT = {
+  title: '',
+  issuer: '',
+  date: '',
+  url: '',
+};
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>('projects');
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [certificates, setCertificates] = useState<Certification[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Project Form State
   const [form, setForm] = useState(EMPTY_PROJECT);
   const [editing, setEditing] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [techInput, setTechInput] = useState('');
+
+  // Certificate Form State
+  const [certForm, setCertForm] = useState(EMPTY_CERT);
+  const [editingCert, setEditingCert] = useState<string | null>(null);
+  const [showCertForm, setShowCertForm] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [uploadingResume, setUploadingResume] = useState(false);
@@ -66,29 +82,88 @@ export default function AdminDashboard() {
   };
 
   const fetchData = useCallback(async () => {
-    if (!isConfigured) { setLoading(false); return; }
     setLoading(true);
-    const [p, m] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('messages').select('*').order('created_at', { ascending: false }),
-    ]);
-    if (p.data) setProjects(p.data as Project[]);
-    if (m.data) setMessages(m.data as Message[]);
+    let loadedProjects: Project[] = [];
+    let loadedMessages: Message[] = [];
+    let loadedCerts: Certification[] = [];
+
+    if (isConfigured) {
+      try {
+        const [p, m, c] = await Promise.all([
+          supabase.from('projects').select('*').order('created_at', { ascending: false }),
+          supabase.from('messages').select('*').order('created_at', { ascending: false }),
+          supabase.from('certificates').select('*').order('created_at', { ascending: false }),
+        ]);
+        if (p.data && p.data.length > 0) loadedProjects = p.data as Project[];
+        if (m.data && m.data.length > 0) loadedMessages = m.data as Message[];
+        if (c.data && c.data.length > 0) loadedCerts = c.data as Certification[];
+      } catch {
+        // Fallback to local storage if network or DB request fails
+      }
+    }
+
+    if (loadedProjects.length === 0) {
+      const localP = localStorage.getItem('portfolio_projects');
+      if (localP) {
+        try { loadedProjects = JSON.parse(localP); } catch { loadedProjects = []; }
+      }
+    }
+
+    if (loadedMessages.length === 0) {
+      const localM = localStorage.getItem('portfolio_messages');
+      if (localM) {
+        try { loadedMessages = JSON.parse(localM); } catch { loadedMessages = []; }
+      }
+    }
+
+    if (loadedCerts.length === 0) {
+      const local = localStorage.getItem('portfolio_certifications');
+      if (local) {
+        try { loadedCerts = JSON.parse(local); } catch { loadedCerts = []; }
+      }
+    }
+
+    setProjects(loadedProjects);
+    setMessages(loadedMessages);
+    setCertificates(loadedCerts);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfigured]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Project Handlers
   const handleSave = async () => {
     if (!form.title.trim()) { showToast('Title is required'); return; }
     setSaving(true);
-    if (editing) {
-      await supabase.from('projects').update(form).eq('id', editing);
-    } else {
-      await supabase.from('projects').insert(form);
+    let updatedProjects: Project[] = [...projects];
+
+    if (isConfigured) {
+      try {
+        if (editing) {
+          await supabase.from('projects').update(form).eq('id', editing);
+        } else {
+          await supabase.from('projects').insert(form);
+        }
+      } catch {
+        // Continue to update local storage
+      }
     }
-    await fetchData();
+
+    if (editing) {
+      updatedProjects = updatedProjects.map(p => p.id === editing ? { ...p, ...form } : p);
+    } else {
+      const newProj: Project = {
+        id: Date.now().toString(),
+        ...form,
+        created_at: new Date().toISOString(),
+      };
+      updatedProjects = [newProj, ...updatedProjects];
+    }
+
+    setProjects(updatedProjects);
+    localStorage.setItem('portfolio_projects', JSON.stringify(updatedProjects));
+
     setForm(EMPTY_PROJECT); setEditing(null); setShowForm(false);
     showToast(editing ? 'Project updated!' : 'Project added!');
     setSaving(false);
@@ -96,8 +171,12 @@ export default function AdminDashboard() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this project?')) return;
-    await supabase.from('projects').delete().eq('id', id);
-    setProjects(p => p.filter(x => x.id !== id));
+    if (isConfigured) {
+      try { await supabase.from('projects').delete().eq('id', id); } catch {}
+    }
+    const updated = projects.filter(p => p.id !== id);
+    setProjects(updated);
+    localStorage.setItem('portfolio_projects', JSON.stringify(updated));
     showToast('Project deleted');
   };
 
@@ -113,8 +192,76 @@ export default function AdminDashboard() {
     setTechInput('');
   };
 
+  // Certificate Handlers
+  const handleSaveCert = async () => {
+    if (!certForm.title.trim()) { showToast('Certificate Title is required'); return; }
+    setSaving(true);
+
+    const certData = {
+      title: certForm.title.trim(),
+      issuer: certForm.issuer.trim() || 'Verified Provider',
+      date: certForm.date.trim(),
+      url: certForm.url.trim() || null,
+      image_url: null,
+    };
+
+    let updatedCerts: Certification[] = [...certificates];
+
+    if (isConfigured) {
+      try {
+        if (editingCert) {
+          await supabase.from('certificates').update(certData).eq('id', editingCert);
+        } else {
+          await supabase.from('certificates').insert(certData);
+        }
+      } catch {
+        // Fallback to local
+      }
+    }
+
+    if (editingCert) {
+      updatedCerts = updatedCerts.map(c => c.id === editingCert ? { ...c, ...certData } : c);
+    } else {
+      const newCert: Certification = {
+        id: Date.now().toString(),
+        ...certData,
+      };
+      updatedCerts = [newCert, ...updatedCerts];
+    }
+
+    setCertificates(updatedCerts);
+    localStorage.setItem('portfolio_certifications', JSON.stringify(updatedCerts));
+
+    setCertForm(EMPTY_CERT); setEditingCert(null); setShowCertForm(false);
+    showToast(editingCert ? 'Certificate updated!' : 'Certificate added!');
+    setSaving(false);
+  };
+
+  const handleDeleteCert = async (id: string) => {
+    if (!confirm('Delete this certificate?')) return;
+    if (isConfigured) {
+      try { await supabase.from('certificates').delete().eq('id', id); } catch {}
+    }
+    const updated = certificates.filter(c => c.id !== id);
+    setCertificates(updated);
+    localStorage.setItem('portfolio_certifications', JSON.stringify(updated));
+    showToast('Certificate deleted');
+  };
+
+  const handleEditCert = (c: Certification) => {
+    setCertForm({
+      title: c.title,
+      issuer: c.issuer,
+      date: c.date || '',
+      url: c.url || '',
+    });
+    setEditingCert(c.id);
+    setShowCertForm(true);
+  };
+
   const TABS = [
     { key: 'projects' as Tab, label: 'Projects', icon: FolderOpen },
+    { key: 'certificates' as Tab, label: 'Certifications', icon: Award },
     { key: 'messages' as Tab, label: 'Messages', icon: MessageSquare },
     { key: 'resume' as Tab, label: 'Resume', icon: Upload },
   ];
@@ -159,7 +306,7 @@ export default function AdminDashboard() {
 
         {!isConfigured && (
           <div style={{ marginBottom: 28, padding: '16px 20px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 12, color: 'var(--accent)', fontSize: '0.9rem' }}>
-            ⚠️ Supabase not configured. Add credentials to <code style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>.env.local</code> to enable full functionality.
+            ⚠️ Supabase not configured. Add credentials to <code style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>.env.local</code> to enable full cloud sync.
           </div>
         )}
 
@@ -258,6 +405,90 @@ export default function AdminDashboard() {
                       {p.live_url && <a href={p.live_url} target="_blank" rel="noopener noreferrer" style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', color: 'var(--text-muted)', transition: 'all 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}><Eye size={15} /></a>}
                       <button onClick={() => handleEdit(p)} style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}><Edit3 size={15} /></button>
                       <button onClick={() => handleDelete(p.id)} style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(248,113,113,0.2)', background: 'transparent', color: '#f87171', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><Trash2 size={15} /></button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CERTIFICATIONS TAB ── */}
+        {tab === 'certificates' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+              <div>
+                <h1 style={{ fontWeight: 800, fontSize: '1.6rem', fontFamily: "'Space Grotesk',sans-serif" }}>Certifications</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>{certificates.length} certifications on your resume</p>
+              </div>
+              <button onClick={() => { setCertForm(EMPTY_CERT); setEditingCert(null); setShowCertForm(true); }} className="btn-primary">
+                <Plus size={17} /> Add Certification
+              </button>
+            </div>
+
+            {/* Certification Form Modal */}
+            {showCertForm && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="glass-card" style={{ width: '100%', maxWidth: 540, padding: 36, maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                    <h2 style={{ fontWeight: 700, fontSize: '1.2rem', fontFamily: "'Space Grotesk',sans-serif" }}>{editingCert ? 'Edit Certification' : 'New Certification'}</h2>
+                    <button onClick={() => setShowCertForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7 }}>Title / Certificate Name *</label>
+                      <input className="input-field" placeholder="e.g. AWS Certified Solutions Architect" value={certForm.title} onChange={e => setCertForm(f => ({ ...f, title: e.target.value }))} />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7 }}>Issuer / Organization</label>
+                      <input className="input-field" placeholder="e.g. Amazon Web Services, Meta, Coursera" value={certForm.issuer} onChange={e => setCertForm(f => ({ ...f, issuer: e.target.value }))} />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7 }}>Issue Date / Year</label>
+                      <input className="input-field" placeholder="e.g. 2024" value={certForm.date} onChange={e => setCertForm(f => ({ ...f, date: e.target.value }))} />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7 }}>Credential / Verification Link</label>
+                      <input className="input-field" placeholder="https://coursera.org/verify/..." value={certForm.url} onChange={e => setCertForm(f => ({ ...f, url: e.target.value }))} />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                      <button onClick={handleSaveCert} disabled={saving} className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+                        {saving ? 'Saving...' : <><Check size={16} /> {editingCert ? 'Update' : 'Add'} Certification</>}
+                      </button>
+                      <button onClick={() => setShowCertForm(false)} className="btn-outline" style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Certifications List */}
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading...</div>
+            ) : certificates.length === 0 ? (
+              <div className="glass-card" style={{ padding: 60, textAlign: 'center' }}>
+                <Award size={40} style={{ color: 'var(--text-muted)', margin: '0 auto 16px' }} />
+                <p style={{ color: 'var(--text-muted)' }}>No certifications added yet. Click &quot;Add Certification&quot; to get started.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {certificates.map((c, i) => (
+                  <motion.div key={c.id || i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: '1rem', display: 'block' }}>{c.title}</span>
+                      <p style={{ color: 'var(--accent-light)', fontSize: '0.84rem', marginTop: 3 }}>
+                        {c.issuer} {c.date ? `• ${c.date}` : ''}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      {c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', color: 'var(--text-muted)', transition: 'all 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}><Eye size={15} /></a>}
+                      <button onClick={() => handleEditCert(c)} style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}><Edit3 size={15} /></button>
+                      <button onClick={() => handleDeleteCert(c.id)} style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(248,113,113,0.2)', background: 'transparent', color: '#f87171', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><Trash2 size={15} /></button>
                     </div>
                   </motion.div>
                 ))}

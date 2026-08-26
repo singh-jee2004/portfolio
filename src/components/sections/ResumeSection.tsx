@@ -1,29 +1,51 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Award, ExternalLink, BookOpen } from 'lucide-react';
-
-const CERTIFICATIONS = [
-  {
-    title: 'Add your certifications via Admin Dashboard',
-    issuer: 'Login to /admin and upload your certificates',
-    date: '',
-    url: null,
-    placeholder: true,
-  },
-];
+import { Download, Award, ExternalLink, BookOpen, Plus } from 'lucide-react';
+import { createClient } from '../../lib/supabase/client';
+import type { Certification } from '../../types';
 
 const EDUCATION = [
   {
-    degree: 'Bachelor of Computer Science / Technology',
-    institution: 'Your University',
+    degree: 'Bachelor of Computer Science & Engineering',
+    institution: 'University',
     year: '2024 – Present',
-    description: 'Specializing in Software Engineering, Algorithms, and Artificial Intelligence.',
-    gpa: 'Update via Admin',
+    description: 'Specializing in Full Stack Web Development, Software Engineering, Algorithms, and Artificial Intelligence.',
   },
 ];
 
 export default function ResumeSection() {
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCerts = async () => {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://'))) {
+          const supabase = createClient();
+          const { data } = await supabase.from('certificates').select('*').order('created_at', { ascending: false });
+          if (data && data.length > 0) {
+            setCertifications(data as Certification[]);
+            setLoading(false);
+            return;
+          }
+        }
+        // Fallback to localStorage if set
+        const local = localStorage.getItem('portfolio_certifications');
+        if (local) {
+          setCertifications(JSON.parse(local));
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCerts();
+  }, []);
+
   return (
     <section id="resume" className="section" style={{ background: 'var(--bg-secondary)' }}>
       <div className="section-container">
@@ -58,20 +80,26 @@ export default function ResumeSection() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{
-              width: 60, height: 60, borderRadius: 16,
-              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <BookOpen size={28} color="#000" />
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 14,
+                background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Download size={26} color="#000" />
             </div>
             <div>
-              <h3 style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: 6, fontFamily: "'Space Grotesk', sans-serif" }}>
-                My Resume
+              <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: 4, fontFamily: "'Space Grotesk', sans-serif" }}>
+                Looking for my detailed Resume?
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                Upload your resume PDF via the Admin Dashboard → it will appear here for download.
+                Download a PDF copy summarizing my tech stack, projects, and education.
               </p>
             </div>
           </div>
@@ -92,9 +120,7 @@ export default function ResumeSection() {
         </motion.div>
 
         {/* Education & Certifications Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}
-             className="resume-grid">
-
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }} className="resume-grid">
           {/* Education */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -141,45 +167,65 @@ export default function ResumeSection() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Award size={18} style={{ color: 'var(--accent)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Award size={18} style={{ color: 'var(--accent)' }} />
+                </div>
+                <h3 style={{ fontWeight: 700, fontSize: '1.15rem', fontFamily: "'Space Grotesk', sans-serif" }}>Certifications</h3>
               </div>
-              <h3 style={{ fontWeight: 700, fontSize: '1.15rem', fontFamily: "'Space Grotesk', sans-serif" }}>Certifications</h3>
+              <a href="/admin" style={{ fontSize: '0.8rem', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Plus size={14} /> Add New
+              </a>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {CERTIFICATIONS.map((cert, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="glass-card"
-                  style={{
-                    padding: '20px 22px',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    opacity: cert.placeholder ? 0.6 : 1,
-                    borderStyle: cert.placeholder ? 'dashed' : 'solid',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 4 }}>{cert.title}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{cert.issuer}</div>
-                  </div>
-                  {cert.url && (
-                    <a href={cert.url} target="_blank" rel="noopener noreferrer"
-                       style={{ color: 'var(--accent)', flexShrink: 0 }}>
-                      <ExternalLink size={16} />
-                    </a>
-                  )}
-                </motion.div>
-              ))}
-
-              <a href="/admin" className="btn-outline" style={{ justifyContent: 'center', marginTop: 8 }}>
-                + Add Certification via Admin
-              </a>
+              {loading ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: 20 }}>Loading certifications...</div>
+              ) : certifications.length === 0 ? (
+                <div className="glass-card" style={{ padding: 24, textAlign: 'center', border: '1.5px dashed var(--border)' }}>
+                  <Award size={32} style={{ color: 'var(--accent)', opacity: 0.5, margin: '0 auto 10px' }} />
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 16 }}>
+                    No certifications added yet. Manage and showcase your credentials via the Admin Dashboard.
+                  </p>
+                  <a href="/admin" className="btn-outline" style={{ display: 'inline-flex', fontSize: '0.82rem', padding: '8px 16px' }}>
+                    + Add Certification via Admin
+                  </a>
+                </div>
+              ) : (
+                certifications.map((cert, i) => (
+                  <motion.div
+                    key={cert.id || i}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="glass-card"
+                    style={{
+                      padding: '20px 22px',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', marginBottom: 4 }}>{cert.title}</div>
+                      <div style={{ color: 'var(--accent-light)', fontSize: '0.82rem', fontWeight: 500 }}>
+                        {cert.issuer} {cert.date ? `• ${cert.date}` : ''}
+                      </div>
+                    </div>
+                    {cert.url && (
+                      <a
+                        href={cert.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-outline"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', flexShrink: 0, gap: 5 }}
+                      >
+                        Verify <ExternalLink size={13} />
+                      </a>
+                    )}
+                  </motion.div>
+                ))
+              )}
             </div>
           </motion.div>
         </div>

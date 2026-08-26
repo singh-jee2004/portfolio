@@ -1,12 +1,11 @@
 'use client';
 
 import { Code2, Heart } from 'lucide-react';
-import { GithubIcon, LinkedinIcon, TwitterIcon } from './Icons';
+import { GithubIcon, InstagramIcon } from './Icons';
 
 const SOCIAL = [
   { icon: GithubIcon, href: 'https://github.com/singh-jee2004', label: 'GitHub' },
-  { icon: LinkedinIcon, href: 'https://linkedin.com/in/tusharsingh', label: 'LinkedIn' },
-  { icon: TwitterIcon, href: 'https://twitter.com/tusharsingh', label: 'Twitter' },
+  { icon: InstagramIcon, href: 'https://instagram.com/tushar_x_1', label: 'Instagram' }
 ];
 
 const QUICK = [

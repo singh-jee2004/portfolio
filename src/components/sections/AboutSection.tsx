@@ -1,14 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { GraduationCap, MapPin, Coffee, Target, Briefcase, Calendar } from 'lucide-react';
-
-const STATS = [
-  { value: '2+', label: 'Years Coding' },
-  { value: '20+', label: 'Projects Built' },
-  { value: '8+', label: 'Technologies' },
-  { value: '∞', label: 'Cups of Coffee' },
-];
+import { createClient } from '../../lib/supabase/client';
 
 const TIMELINE = [
   {
@@ -41,6 +36,51 @@ const INTERESTS = [
 ];
 
 export default function AboutSection() {
+  const [projectCount, setProjectCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchProjectCount = async () => {
+      let count = 0;
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://'))) {
+          const client = createClient();
+          const { data } = await client.from('projects').select('id');
+          if (data && data.length > 0) {
+            count = data.length;
+            setProjectCount(count);
+            return;
+          }
+        }
+      } catch {
+        // Check local storage fallback
+      }
+
+      try {
+        const local = localStorage.getItem('portfolio_projects');
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed)) {
+            count = parsed.length;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      setProjectCount(count);
+    };
+
+    fetchProjectCount();
+  }, []);
+
+  const STATS = [
+    { value: '2+', label: 'Years Coding' },
+    { value: projectCount > 0 ? `${projectCount}+` : '0', label: 'Projects Built' },
+    { value: '8+', label: 'Technologies' },
+    { value: '∞', label: 'Cups of Coffee' },
+  ];
+
   return (
     <section id="about" className="section">
       <div className="section-container">

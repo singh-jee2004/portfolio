@@ -9,6 +9,7 @@ import type { Project } from '../../types';
 
 function ProjectCard({ project, index }: { project: Project; index: number }) {
   const [hovered, setHovered] = useState(false);
+  const techList = Array.isArray(project.tech_stack) ? project.tech_stack : [];
 
   return (
     <motion.div
@@ -81,7 +82,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 
         {/* Tech Stack */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 20 }}>
-          {project.tech_stack.map(tech => (
+          {techList.map(tech => (
             <span key={tech} className="tech-badge" style={{ fontSize: '0.7rem' }}>
               {tech}
             </span>
@@ -92,15 +93,15 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
         <div style={{ display: 'flex', gap: 12 }}>
           {project.github_url && (
             <a href={project.github_url} target="_blank" rel="noopener noreferrer"
-               className="btn-outline"
-               style={{ padding: '8px 16px', fontSize: '0.82rem', flex: 1, justifyContent: 'center' }}>
+              className="btn-outline"
+              style={{ padding: '8px 16px', fontSize: '0.82rem', flex: 1, justifyContent: 'center' }}>
               <GithubIcon size={15} /> Code
             </a>
           )}
           {project.live_url && (
             <a href={project.live_url} target="_blank" rel="noopener noreferrer"
-               className="btn-primary"
-               style={{ padding: '8px 16px', fontSize: '0.82rem', flex: 1, justifyContent: 'center' }}>
+              className="btn-primary"
+              style={{ padding: '8px 16px', fontSize: '0.82rem', flex: 1, justifyContent: 'center' }}>
               <ExternalLink size={15} /> Live Demo
             </a>
           )}
@@ -116,19 +117,34 @@ export default function ProjectsSection() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) {
-      setLoading(false);
-      return;
-    }
-
-    const client = createClient();
-    client.from('projects').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) setProjects(data as Project[]);
+    const fetchProjects = async () => {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://'))) {
+          const client = createClient();
+          const { data } = await client.from('projects').select('*').order('created_at', { ascending: false });
+          if (data && data.length > 0) {
+            setProjects(data as Project[]);
+            setLoading(false);
+            return;
+          }
+        }
+        // Fallback to localStorage if set via Admin Panel
+        const local = localStorage.getItem('portfolio_projects');
+        if (local) {
+          setProjects(JSON.parse(local));
+        }
+      } catch {
+        const local = localStorage.getItem('portfolio_projects');
+        if (local) {
+          try { setProjects(JSON.parse(local)); } catch {}
+        }
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    };
+
+    fetchProjects();
   }, []);
 
   const displayed = filter === 'featured' ? projects.filter(p => p.featured) : projects;
