@@ -24,8 +24,9 @@ export default function AdminLoginPage() {
     const isConfigured = supabaseUrl && supabaseUrl !== 'your_supabase_project_url';
 
     if (!isConfigured) {
-      // Demo mode fallback
-      if (email === process.env.NEXT_PUBLIC_ADMIN_EMAIL || email === 'admin@tusharsingh.dev') {
+      // Demo / Local mode fallback
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'tusharsinghr26@gmail.com';
+      if (email.toLowerCase() === adminEmail.toLowerCase() || email.toLowerCase() === 'admin@tusharsingh.dev') {
         router.push('/admin');
         setLoading(false);
         return;

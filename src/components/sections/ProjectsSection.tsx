@@ -2,80 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ExternalLink, Star, Layers } from 'lucide-react';
+import { ExternalLink, Star, Layers, FolderOpen } from 'lucide-react';
 import { GithubIcon } from '../ui/Icons';
 import { createClient } from '../../lib/supabase/client';
 import type { Project } from '../../types';
-
-/* ── Placeholder projects (shown before Supabase is configured) ── */
-const PLACEHOLDER_PROJECTS: Project[] = [
-  {
-    id: '1',
-    title: 'WildScan — Animal Identifier',
-    description: 'AI-powered mobile application for real-time animal identification using React Native, Expo, and Supabase backend with a custom ML classification model.',
-    image_url: null,
-    github_url: 'https://github.com/tusharsingh/wildscan',
-    live_url: null,
-    tech_stack: ['React Native', 'Expo', 'Supabase', 'Python', 'TensorFlow'],
-    featured: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: '3D Developer Portfolio',
-    description: 'This very website! An immersive 3D portfolio built with Next.js 16, React Three Fiber, Framer Motion, and Supabase for the backend CMS.',
-    image_url: null,
-    github_url: 'https://github.com/tusharsingh/portfolio',
-    live_url: 'https://tusharsingh.dev',
-    tech_stack: ['Next.js', 'Three.js', 'TypeScript', 'Supabase', 'Framer Motion'],
-    featured: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Student Result Management System',
-    description: 'A comprehensive result management system with role-based access, custom grading logic (A★ to F), and a animated loading experience.',
-    image_url: null,
-    github_url: 'https://github.com/tusharsingh/student-results',
-    live_url: null,
-    tech_stack: ['React', 'Node.js', 'PostgreSQL', 'Express', 'Tailwind CSS'],
-    featured: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    title: 'Recipe Social Platform',
-    description: 'A full-featured recipe sharing social platform with likes, comments, recipe CRUD, search & filter functionality, and real-time updates.',
-    image_url: null,
-    github_url: 'https://github.com/tusharsingh/recipe-social',
-    live_url: null,
-    tech_stack: ['Next.js', 'Supabase', 'TypeScript', 'Tailwind CSS'],
-    featured: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    title: 'Ultron AI Assistant',
-    description: 'A real-time AI voice assistant with a futuristic HUD interface, integrating OpenAI GPT, browser speech recognition, and neural voice synthesis.',
-    image_url: null,
-    github_url: 'https://github.com/tusharsingh/ultron',
-    live_url: null,
-    tech_stack: ['React', 'FastAPI', 'Python', 'OpenAI', 'WebSpeech API'],
-    featured: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '6',
-    title: 'AI Chatbot Platform',
-    description: 'Multi-model AI chatbot platform supporting GPT-4, Claude, and Gemini with conversation history, file uploads, and custom personas.',
-    image_url: null,
-    github_url: 'https://github.com/tusharsingh/ai-chatbot',
-    live_url: null,
-    tech_stack: ['Next.js', 'OpenAI', 'Anthropic', 'Vercel AI SDK', 'Prisma'],
-    featured: false,
-    created_at: new Date().toISOString(),
-  },
-];
 
 function ProjectCard({ project, index }: { project: Project; index: number }) {
   const [hovered, setHovered] = useState(false);
@@ -181,16 +111,24 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 }
 
 export default function ProjectsSection() {
-  const [projects, setProjects] = useState<Project[]>(PLACEHOLDER_PROJECTS);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [filter, setFilter] = useState<'all' | 'featured'>('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) return;
+    if (!supabaseUrl || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) {
+      setLoading(false);
+      return;
+    }
 
     const client = createClient();
     client.from('projects').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => { if (data && data.length > 0) setProjects(data as Project[]); });
+      .then(({ data }) => {
+        if (data) setProjects(data as Project[]);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const displayed = filter === 'featured' ? projects.filter(p => p.featured) : projects;
@@ -214,29 +152,63 @@ export default function ProjectsSection() {
         </motion.div>
 
         {/* Filter */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 40 }}>
-          {(['all', 'featured'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              style={{
-                padding: '9px 22px', borderRadius: 99, border: filter === f ? '1px solid var(--accent)' : '1px solid var(--border)',
-                background: filter === f ? 'rgba(245,158,11,0.12)' : 'transparent',
-                color: filter === f ? 'var(--accent)' : 'var(--text-secondary)',
-                fontWeight: filter === f ? 700 : 400,
-                fontSize: '0.88rem', cursor: 'pointer',
-                fontFamily: "'Outfit', sans-serif",
-                transition: 'all 0.2s',
-              }}>
-              {f === 'all' ? '🚀 All Projects' : '⭐ Featured'}
-            </button>
-          ))}
-        </div>
+        {projects.length > 0 && (
+          <div style={{ display: 'flex', gap: 12, marginBottom: 40 }}>
+            {(['all', 'featured'] as const).map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                style={{
+                  padding: '9px 22px', borderRadius: 99, border: filter === f ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  background: filter === f ? 'rgba(245,158,11,0.12)' : 'transparent',
+                  color: filter === f ? 'var(--accent)' : 'var(--text-secondary)',
+                  fontWeight: filter === f ? 700 : 400,
+                  fontSize: '0.88rem', cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                  transition: 'all 0.2s',
+                }}>
+                {f === 'all' ? '🚀 All Projects' : '⭐ Featured'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Loading state */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+              style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto' }}
+            />
+            <p style={{ color: 'var(--text-muted)', marginTop: 16, fontSize: '0.9rem' }}>Loading projects...</p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && projects.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card"
+            style={{ padding: '60px 40px', textAlign: 'center', border: '1.5px dashed var(--border)' }}
+          >
+            <FolderOpen size={48} style={{ color: 'var(--accent)', opacity: 0.5, margin: '0 auto 16px' }} />
+            <h3 style={{ fontWeight: 700, fontSize: '1.15rem', marginBottom: 8, fontFamily: "'Space Grotesk', sans-serif" }}>
+              No projects yet
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', maxWidth: 420, margin: '0 auto' }}>
+              Projects will appear here once added via the <strong style={{ color: 'var(--accent)' }}>Admin Dashboard</strong>. Head to <code style={{ color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem' }}>/admin</code> to add your first project!
+            </p>
+          </motion.div>
+        )}
 
         {/* Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
-          {displayed.map((project, i) => (
-            <ProjectCard key={project.id} project={project} index={i} />
-          ))}
-        </div>
+        {!loading && displayed.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
+            {displayed.map((project, i) => (
+              <ProjectCard key={project.id} project={project} index={i} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

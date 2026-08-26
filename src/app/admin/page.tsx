@@ -24,12 +24,46 @@ export default function AdminDashboard() {
   const [techInput, setTechInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [resumeMsg, setResumeMsg] = useState('');
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isConfigured = Boolean(supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://')));
   const supabase = createClient();
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showToast('Please select a valid PDF file (.pdf)');
+      return;
+    }
+    setUploadingResume(true);
+    setResumeMsg('Uploading resume PDF...');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload-resume', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('Resume PDF uploaded successfully!');
+        setResumeMsg('Resume updated successfully! The "Download PDF" button is now active.');
+      } else {
+        showToast(data.error || 'Upload failed');
+        setResumeMsg('');
+      }
+    } catch {
+      showToast('Upload error occurred');
+      setResumeMsg('');
+    } finally {
+      setUploadingResume(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!isConfigured) { setLoading(false); return; }
@@ -273,12 +307,47 @@ export default function AdminDashboard() {
               <h1 style={{ fontWeight: 800, fontSize: '1.6rem', fontFamily: "'Space Grotesk',sans-serif" }}>Resume & Files</h1>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>Upload your resume PDF and manage certifications</p>
             </div>
-            <div className="glass-card" style={{ padding: 48, textAlign: 'center', border: '2px dashed var(--border)' }}>
-              <Upload size={44} style={{ color: 'var(--accent)', opacity: 0.6, margin: '0 auto 16px' }} />
-              <h3 style={{ fontWeight: 700, marginBottom: 8 }}>Upload Resume PDF</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 24 }}>Configure Supabase Storage to enable file uploads. Once set up, your resume will appear on the portfolio with a download button.</p>
-              <div className="tech-badge" style={{ display: 'inline-flex', fontSize: '0.8rem' }}>
-                Requires Supabase Storage configuration
+            
+            <div className="glass-card" style={{ padding: 48, textAlign: 'center', border: '2px dashed var(--border-hover)' }}>
+              <input
+                type="file"
+                accept=".pdf"
+                id="resume-file-input"
+                style={{ display: 'none' }}
+                onChange={handleResumeUpload}
+                disabled={uploadingResume}
+              />
+              
+              <Upload size={48} style={{ color: 'var(--accent)', margin: '0 auto 16px', opacity: uploadingResume ? 0.5 : 1 }} />
+              <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: 8 }}>Upload Resume PDF</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: 24, maxWidth: 500, margin: '0 auto 24px' }}>
+                Select your updated resume PDF. It will immediately activate the &quot;Download PDF&quot; button on your live portfolio.
+              </p>
+
+              {resumeMsg && (
+                <div style={{ marginBottom: 20, color: 'var(--accent-light)', fontSize: '0.9rem', fontWeight: 600 }}>
+                  ✅ {resumeMsg}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <label
+                  htmlFor="resume-file-input"
+                  className="btn-primary"
+                  style={{ cursor: uploadingResume ? 'wait' : 'pointer', display: 'inline-flex', opacity: uploadingResume ? 0.7 : 1 }}
+                >
+                  <Upload size={18} /> {uploadingResume ? 'Uploading PDF...' : 'Choose PDF File'}
+                </label>
+
+                <a
+                  href="/resume.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-outline"
+                  style={{ display: 'inline-flex' }}
+                >
+                  Preview Current Resume ↗
+                </a>
               </div>
             </div>
           </div>

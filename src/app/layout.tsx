@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AIChatbot from "@/components/ui/AIChatbot";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default function RootLayout({
       <body className="antialiased">
         <div className="noise-overlay" aria-hidden="true" />
         {children}
+        <AIChatbot />
       </body>
     </html>
   );

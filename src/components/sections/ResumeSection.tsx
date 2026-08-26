@@ -77,10 +77,11 @@ export default function ResumeSection() {
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
             <a
-              href="#"
+              href="/resume.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              download="Tushar_Singh_Resume.pdf"
               className="btn-primary"
-              style={{ pointerEvents: 'none', opacity: 0.5 }}
-              aria-disabled="true"
             >
               <Download size={18} /> Download PDF
             </a>

@@ -11,9 +11,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if Supabase is configured
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url') {
+    if (!supabaseUrl || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) {
       // Log to console as fallback
       console.log('📩 New contact message (Supabase not configured):', { name, email, subject, message });
       return NextResponse.json({ success: true, message: 'Message received (logged locally)' });
