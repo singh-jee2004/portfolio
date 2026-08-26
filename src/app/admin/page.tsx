@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import SkullLoader from '@/components/ui/SkullLoader';
 import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home, Award } from 'lucide-react';
-import { createClient } from '../../lib/supabase/client';
-import type { Project, Message, Certification } from '../../types';
+import { createClient } from '@/lib/supabase/client';
+import type { Project, Message, Certification } from '@/types';
 
 type Tab = 'projects' | 'certificates' | 'messages' | 'resume';
 
@@ -44,13 +45,49 @@ export default function AdminDashboard() {
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeMsg, setResumeMsg] = useState('');
 
+  const router = useRouter();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isConfigured = Boolean(supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://')));
   const supabase = createClient();
 
+  // Strict session check: Redirect to login if user signed out
+  useEffect(() => {
+    const verifySession = async () => {
+      const isLocalAdmin = typeof window !== 'undefined' && localStorage.getItem('admin_session') === 'true';
+      if (isLocalAdmin) return;
+
+      if (isConfigured) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/admin/login');
+        }
+      } else if (!isLocalAdmin) {
+        router.push('/admin/login');
+      }
+    };
+    verifySession();
+  }, [isConfigured, router]);
+
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
+  const checkAdminAuth = async (): Promise<boolean> => {
+    const isLocalAdmin = typeof window !== 'undefined' && localStorage.getItem('admin_session') === 'true';
+    if (isLocalAdmin) return true;
+
+    if (isConfigured) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) return true;
+    }
+
+    showToast('Unauthorized: Please sign in to make changes');
+    router.push('/admin/login');
+    return false;
+  };
+
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isAuth = await checkAdminAuth();
+    if (!isAuth) return;
+
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -135,6 +172,9 @@ export default function AdminDashboard() {
 
   // Project Handlers
   const handleSave = async () => {
+    const isAuth = await checkAdminAuth();
+    if (!isAuth) return;
+
     if (!form.title.trim()) { showToast('Title is required'); return; }
     setSaving(true);
     let updatedProjects: Project[] = [...projects];
@@ -171,6 +211,9 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (id: string) => {
+    const isAuth = await checkAdminAuth();
+    if (!isAuth) return;
+
     if (!confirm('Delete this project?')) return;
     if (isConfigured) {
       try { await supabase.from('projects').delete().eq('id', id); } catch {}
@@ -195,6 +238,9 @@ export default function AdminDashboard() {
 
   // Certificate Handlers
   const handleSaveCert = async () => {
+    const isAuth = await checkAdminAuth();
+    if (!isAuth) return;
+
     if (!certForm.title.trim()) { showToast('Certificate Title is required'); return; }
     setSaving(true);
 
@@ -239,6 +285,9 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteCert = async (id: string) => {
+    const isAuth = await checkAdminAuth();
+    if (!isAuth) return;
+
     if (!confirm('Delete this certificate?')) return;
     if (isConfigured) {
       try { await supabase.from('certificates').delete().eq('id', id); } catch {}
@@ -290,7 +339,11 @@ export default function AdminDashboard() {
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
             <Home size={16} /> View Site
           </a>
-          <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/admin/login'; }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: '#f87171', fontFamily: "'Outfit',sans-serif", fontSize: '0.88rem', width: '100%', textAlign: 'left' }}>
+          <button onClick={async () => {
+            localStorage.removeItem('admin_session');
+            if (isConfigured) { try { await supabase.auth.signOut(); } catch {} }
+            window.location.href = '/admin/login';
+          }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: '#f87171', fontFamily: "'Outfit',sans-serif", fontSize: '0.88rem', width: '100%', textAlign: 'left' }}>
             <LogOut size={16} /> Sign Out
           </button>
         </div>

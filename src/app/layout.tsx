@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 
 import { Suspense } from 'react';
 import GlobalRouteLoader from '@/components/ui/GlobalRouteLoader';
+import AdminModeBanner from '@/components/ui/AdminModeBanner';
 
 export default function RootLayout({
   children,
@@ -43,6 +44,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         <div className="noise-overlay" aria-hidden="true" />
+        <AdminModeBanner />
         <Suspense fallback={null}>
           <GlobalRouteLoader />
         </Suspense>
