@@ -2,6 +2,7 @@ export interface Project {
   id: string;
   title: string;
   description: string;
+  summary?: string | null;
   image_url: string | null;
   github_url: string | null;
   live_url: string | null;

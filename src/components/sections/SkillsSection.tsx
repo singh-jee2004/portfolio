@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type Category = 'all' | 'frontend' | 'backend' | 'database' | 'ai' | 'tools';
@@ -62,8 +62,13 @@ function levelLabel(n: number) {
 
 export default function SkillsSection() {
   const [active, setActive] = useState<Category>('all');
+  const [mounted, setMounted] = useState(false);
 
-  const filtered = active === 'all' ? SKILLS : SKILLS.filter(s => s.category === active);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const filtered = active === 'all' ? SKILLS : SKILLS.filter((s) => s.category === active);
 
   return (
     <section id="skills" className="section" style={{ background: 'var(--bg-secondary)' }}>
@@ -77,7 +82,7 @@ export default function SkillsSection() {
           style={{ marginBottom: 48, textAlign: 'center' }}
         >
           <p className="section-label">What I know</p>
-          <h2 className="section-title">Skills & Technologies</h2>
+          <h2 className="section-title">Skills &amp; Technologies</h2>
           <div className="accent-line" style={{ margin: '16px auto 0' }} />
           <p className="section-subtitle" style={{ margin: '20px auto 0', textAlign: 'center' }}>
             A curated set of technologies I use to bring ideas to life.
@@ -144,22 +149,35 @@ export default function SkillsSection() {
                     <span style={{ fontSize: '1.4rem' }}>{skill.icon}</span>
                     <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{skill.name}</span>
                   </div>
-                  <span style={{
-                    fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace",
-                    fontWeight: 600, padding: '3px 8px',
-                    background: 'rgba(245,158,11,0.1)', borderRadius: 4,
-                    color: 'var(--accent)',
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 600,
+                      padding: '3px 8px',
+                      background: 'rgba(245,158,11,0.1)',
+                      borderRadius: 4,
+                      color: 'var(--accent)',
+                    }}
+                  >
                     {levelLabel(skill.level)}
                   </span>
                 </div>
 
                 {/* Progress bar track */}
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden', width: '100%' }}>
+                <div
+                  style={{
+                    height: 6,
+                    background: 'rgba(255,255,255,0.08)',
+                    borderRadius: 99,
+                    overflow: 'hidden',
+                    width: '100%',
+                  }}
+                >
                   <motion.div
                     className="skill-bar-fill"
                     initial={{ width: '0%' }}
-                    whileInView={{ width: `${skill.level}%` }}
+                    whileInView={{ width: mounted ? `${skill.level}%` : '0%' }}
                     viewport={{ once: true, amount: 0.2 }}
                     transition={{ duration: 1.0, delay: i * 0.04, ease: 'easeOut' }}
                     style={{

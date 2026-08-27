@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
     const inputEmail = email.trim().toLowerCase();
     const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin12345';
 
-    const isTargetAdmin = inputEmail === adminEmail || inputEmail === 'admin@tusharsingh.dev';
+    const isTargetAdmin = inputEmail === adminEmail;
     const isTargetPassword = password === adminPassword;
 
     // 1. Try Supabase Auth if configured
@@ -193,7 +193,7 @@ export default function AdminLoginPage() {
                 type="email"
                 id="admin-email"
                 className="input-field"
-                placeholder="admin@tusharsingh.dev"
+                placeholder="tusharsinghr26@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={{ paddingLeft: 42 }}

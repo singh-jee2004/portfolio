@@ -118,6 +118,8 @@ export default function ProjectsSection() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let supabaseChannel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null;
+
     const fetchProjects = async () => {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -146,6 +148,35 @@ export default function ProjectsSection() {
     };
 
     fetchProjects();
+
+    // 1. Listen for local custom events (Admin mutations in same tab)
+    window.addEventListener('portfolio_data_updated', fetchProjects);
+    // 2. Listen for storage events (Admin mutations in different tab)
+    window.addEventListener('storage', fetchProjects);
+
+    // 3. Listen for Supabase Realtime changes
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://'))) {
+      try {
+        const client = createClient();
+        supabaseChannel = client
+          .channel('realtime-projects-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+            fetchProjects();
+          })
+          .subscribe();
+      } catch {
+        // ignore realtime subscription failures
+      }
+    }
+
+    return () => {
+      window.removeEventListener('portfolio_data_updated', fetchProjects);
+      window.removeEventListener('storage', fetchProjects);
+      if (supabaseChannel) {
+        try { supabaseChannel.unsubscribe(); } catch {}
+      }
+    };
   }, []);
 
   const displayed = filter === 'featured' ? projects.filter(p => p.featured) : projects;

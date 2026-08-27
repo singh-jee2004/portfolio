@@ -98,9 +98,9 @@ export default function Footer() {
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.8 }}>
               Open to exciting opportunities and collaborations.<br />
-              <a href="mailto:hello@tusharsingh.dev"
+              <a href="mailto:tusharsinghr26@gmail.com"
                 style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
-                hello@tusharsingh.dev
+                tusharsinghr26@gmail.com
               </a>
             </p>
           </div>

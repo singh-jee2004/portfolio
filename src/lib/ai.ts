@@ -5,7 +5,7 @@
 export interface AvatarKnowledgeItem {
   question: string;
   answer: string;
-  category: 'skills' | 'projects' | 'experience' | 'education' | 'contact' | 'general';
+  category: 'skills' | 'projects' | 'experience' | 'education' | 'interests' | 'languages' | 'contact' | 'general' | 'girlfriend' | 'family';
   keywords: string[];
 }
 
@@ -19,14 +19,32 @@ export const PORTFOLIO_KNOWLEDGE: AvatarKnowledgeItem[] = [
   {
     category: 'skills',
     question: 'What are your skills?',
-    answer: "I specialize in Next.js, React, TypeScript, Three.js, React Three Fiber, Node.js, Tailwind CSS, Supabase, PostgreSQL, and AI model integration like Gemini & OpenAI.",
+    answer: "I specialize in Next.js, React, TypeScript, Three.js, React Three Fiber, Node.js, Express, Python, Tailwind CSS, Supabase, PostgreSQL, and AI model integration like Gemini & OpenAI.",
     keywords: ['skills', 'tech', 'stack', 'technologies', 'react', 'next', 'three', 'supabase', 'know', 'expertise'],
+  },
+  {
+    category: 'languages',
+    question: 'What coding languages do you know?',
+    answer: "Tushar is proficient in the following programming languages & frameworks:\n\n• **Coding Languages:** JavaScript (ES6+), TypeScript, Python, HTML5, CSS3, SQL\n• **Frameworks & Runtime:** React, Next.js, Node.js, Express, FastAPI, Three.js / WebGL, Tailwind CSS\n• **Databases & Tools:** Supabase, PostgreSQL, MongoDB, Git, Docker",
+    keywords: ['language', 'languages', 'coding languages', 'programming languages', 'code in', 'speak'],
+  },
+  {
+    category: 'education',
+    question: 'What is your educational background?',
+    answer: "Tushar's Educational Background:\n\n• Has completed secondary education from INDIA INTERNATIONAL SCHOOL with a Percentile of 80%\n\n• He has also Completed Diploma in Civil Engineering from Asansol Polytechnic with a percentile of 70%\n\n• **Currently Pursuing:** B.Tech in Computer Science & Engineering (CSE) with specializations in Software Engineering, Web Technologies, Data Structures & Algorithms, and Artificial Intelligence.",
+    keywords: ['education', 'educational', 'degree', 'study', 'studying', 'college', 'university', 'student', 'qualification', 'high school', 'btech', 'b.tech', 'school', 'polytechnic', 'diploma'],
+  },
+  {
+    category: 'interests',
+    question: 'What are your interests and hobbies?',
+    answer: "Tushar's Interests & Hobbies:\n\n• **Technical Interests:** 3D Interactive Web Development (Three.js & WebGL), AI Agent Architectures, RAG Pipelines, and Open Source Software.\n• **Personal Hobbies:** Exploring new AI models, UI/UX graphic design, technology blogging, and music.",
+    keywords: ['interest', 'interests', 'hobby', 'hobbies', 'passion', 'passionate', 'like to do', 'free time'],
   },
   {
     category: 'projects',
     question: 'What projects have you built?',
-    answer: "I've built an AI-Powered 3D Avatar Portfolio, WildScan Animal Identifier app, a Recipe Social Platform, Student Result System, and an AI Chatbot powered by Gemini API.",
-    keywords: ['projects', 'built', 'portfolio', 'work', 'apps', 'applications', 'wildscan', 'recipe'],
+    answer: "Tushar haven't added any project yet.",
+    keywords: ['projects', 'built', 'portfolio', 'work', 'apps', 'applications'],
   },
   {
     category: 'experience',
@@ -35,16 +53,22 @@ export const PORTFOLIO_KNOWLEDGE: AvatarKnowledgeItem[] = [
     keywords: ['experience', 'background', 'work', 'history', 'role', 'developer'],
   },
   {
-    category: 'education',
-    question: 'What is your education?',
-    answer: "I am a Computer Science background developer focused on software engineering, AI application development, database management, and modern Web3/3D graphic systems.",
-    keywords: ['education', 'degree', 'study', 'college', 'university', 'student', 'qualification'],
-  },
-  {
     category: 'contact',
     question: 'How can I contact you?',
     answer: "You can reach out via GitHub at github.com/singh-jee2004, Instagram @_tushar.__singh_, or through the contact section right here on my portfolio website!",
     keywords: ['contact', 'email', 'reach', 'hire', 'instagram', 'github', 'connect', 'touch'],
+  },
+  {
+    category: 'girlfriend',
+    question: 'Does Tushar have a girlfriend?',
+    answer: "Tushar is single. His heart belongs to his laptop. Or speaking truth I don't know the exact count 😉. If you want I can ask him and get back to you 😉.",
+    keywords: ['girlfriend', 'gf', 'single', 'dating', 'relationship'],
+  },
+  {
+    category: 'family',
+    question: 'Does Tushar have a family?',
+    answer: "Yes, Tushar is blessed with a loving family. He has a loving mother.",
+    keywords: ['family', 'parents', 'mother', 'sister', 'niece', 'relative'],
   },
 ];
 
@@ -76,6 +100,6 @@ export function getAvatarResponse(query: string): string {
     return bestMatch.answer;
   }
 
-  // General fallback response
-  return `Thanks for asking! I'm Tushar's AI representative. Tushar is a Full Stack & AI Developer skilled in Next.js, Three.js, Supabase, and AI integration. Feel free to ask about his projects, skills, or contact info!`;
+  // General fallback response for unrecognized queries
+  return "I'm unable to recognize that question. Please check your sentence or typo!";
 }

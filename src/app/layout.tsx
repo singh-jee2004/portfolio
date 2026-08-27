@@ -1,6 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import AIChatbot from "@/components/ui/AIChatbot";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#030712",
+};
 
 export const metadata: Metadata = {
   title: "Tushar Singh | Full Stack Developer & AI Enthusiast",

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Volume2, VolumeX, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useVoiceController } from './VoiceController';
 
 const INTRO_AND_PASSION_TEXT =

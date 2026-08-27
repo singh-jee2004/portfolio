@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowDown, Sparkles } from 'lucide-react';
 import { GithubIcon, InstagramIcon } from '../ui/Icons';
 
-import { FallbackAvatarVisual } from '../avatar/AvatarScene';
+import FallbackAvatarVisual from '../avatar/FallbackAvatarVisual';
 import { LipSyncProvider } from '../avatar/LipSync';
 import { VoiceControllerProvider } from '../avatar/VoiceController';
 import AvatarSpeakerButton from '../avatar/AvatarSpeakerButton';
@@ -153,7 +153,7 @@ export default function HeroSection() {
                       fontWeight: 600,
                     }}
                   >
-                    Interactive 3D Developer Avatar
+                    Tushar&apos;s World
                   </span>
                 </motion.div>
 

@@ -4,17 +4,10 @@ import React, { Component, ReactNode, useRef, useMemo, useState, useEffect } fro
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import SkullLoader from '@/components/ui/SkullLoader';
 import Avatar from './Avatar';
+import FallbackAvatarVisual from './FallbackAvatarVisual';
 
-/* ── Fallback Visual when WebGL fails ── */
-export function FallbackAvatarVisual() {
-  return (
-    <div className="w-full h-full flex items-center justify-center relative">
-      <SkullLoader message="LOADING 3D AVATAR SYSTEM..." />
-    </div>
-  );
-}
+export { FallbackAvatarVisual };
 
 /* ── WebGL Error Boundary ── */
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {

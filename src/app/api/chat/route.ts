@@ -1,141 +1,346 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '../../../lib/supabase/server';
-
-const KNOWLEDGE_BASE = {
-  name: 'Tushar Singh',
-  title: 'Full Stack Developer & AI Enthusiast',
-  journey: 'Started coding journey in 2024 (2+ years of experience).',
-  education: 'B.Tech in Computer Science & Engineering.',
-  location: 'India 🇮🇳',
-  email: 'tusharsinghr26@gmail.com',
-  github: 'https://github.com/singh-jee2004',
-  status: 'Open to full-stack engineering opportunities, freelancing, and AI collaborations.',
-  techStack: {
-    frontend: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'JavaScript', 'HTML & CSS'],
-    backend: ['Node.js', 'Express.js', 'Python', 'FastAPI', 'REST APIs'],
-    database: ['PostgreSQL', 'Supabase', 'MongoDB', 'MySQL'],
-    ai: ['OpenAI API', 'LangChain', 'Hugging Face', 'GitHub Copilot'],
-    tools: ['Git & GitHub', 'Docker', 'VS Code', 'Vercel', 'Linux'],
-  },
-};
-
-// Fetch live projects from Supabase
-async function fetchProjects(): Promise<{ title: string; description: string; tech_stack: string[] }[]> {
-  try {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from('projects')
-      .select('title, description, tech_stack')
-      .order('created_at', { ascending: false });
-
-    if (error || !data) return [];
-    return data;
-  } catch {
-    return [];
-  }
-}
-
-function formatProjectsForReply(projects: { title: string; description: string; tech_stack: string[] }[]): string {
-  if (projects.length === 0) {
-    return `Tushar hasn't added any projects to the portfolio yet. Check back soon — he's always building something new! 🚀`;
-  }
-
-  const list = projects
-    .map((p, i) => `${i + 1}. **${p.title}** — ${p.description}${p.tech_stack?.length ? ` _(${p.tech_stack.join(', ')})_` : ''}`)
-    .join('\n');
-
-  return `Tushar has **${projects.length} project${projects.length > 1 ? 's' : ''}** in his portfolio:\n\n${list}\n\nExplore them all in the **Projects** section!`;
-}
-
-function formatProjectsForContext(projects: { title: string; description: string; tech_stack: string[] }[]): string {
-  if (projects.length === 0) return 'No projects added yet.';
-  return projects
-    .map((p) => `- ${p.title}: ${p.description} (Tech: ${p.tech_stack?.join(', ') || 'N/A'})`)
-    .join('\n');
-}
+import { getAvatarResponse } from '@/lib/ai';
+import {
+  fetchAvatarResponsesFromSupabase,
+  fetchProjectsFromSupabase,
+  fetchCertificatesFromSupabase,
+  getLivePortfolioContextSummary,
+} from '@/lib/supabase-avatar';
+import { checkRateLimit, sanitizeInput } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
-    const { message } = await req.json();
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    // 1. Client IP Rate Limiting Guard (max 25 AI queries per minute per IP)
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anonymous-ip';
+    const rateLimit = checkRateLimit(`chat-${ip}`, 25, 60 * 1000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { reply: 'You are asking questions too fast! Please wait a moment before sending another query.', answer: 'You are asking questions too fast! Please wait a moment.' },
+        { status: 429 }
+      );
     }
 
-    const query = message.toLowerCase().trim();
+    const body = await req.json();
+    const rawMessage = body.message || body.question;
 
-    // Fetch live projects from database
-    const projects = await fetchProjects();
+    if (!rawMessage || typeof rawMessage !== 'string') {
+      return NextResponse.json({ error: 'Message or question string is required' }, { status: 400 });
+    }
 
-    // Check if OpenAI key is present
-    const openAiKey = process.env.OPENAI_API_KEY;
-    if (openAiKey) {
-      try {
-        const projectContext = formatProjectsForContext(projects);
+    const cleanQuestion = sanitizeInput(rawMessage.trim().toLowerCase(), 500);
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openAiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              {
-                role: 'system',
-                content: `You are TusharAI, the personal AI assistant for Tushar Singh's 3D Portfolio. Answer concisely, professionally, and enthusiastically using this context:
-Name: ${KNOWLEDGE_BASE.name}
-Title: ${KNOWLEDGE_BASE.title}
-Journey: ${KNOWLEDGE_BASE.journey}
-Education: ${KNOWLEDGE_BASE.education}
-Location: ${KNOWLEDGE_BASE.location}
-Email: ${KNOWLEDGE_BASE.email}
-GitHub: ${KNOWLEDGE_BASE.github}
-Status: ${KNOWLEDGE_BASE.status}
-Tech Stack: ${JSON.stringify(KNOWLEDGE_BASE.techStack)}
-Portfolio Projects:\n${projectContext}`,
-              },
-              { role: 'user', content: message },
-            ],
-            max_tokens: 300,
-            temperature: 0.7,
-          }),
+    // Fetch projects from Supabase & combine with client payload if Supabase is empty
+    let liveProjects = await fetchProjectsFromSupabase();
+    if ((!liveProjects || liveProjects.length === 0) && Array.isArray(body.projects) && body.projects.length > 0) {
+      liveProjects = body.projects;
+    }
+
+    // Fetch certs from Supabase & combine with client payload if Supabase is empty
+    let liveCerts = await fetchCertificatesFromSupabase();
+    if ((!liveCerts || liveCerts.length === 0) && Array.isArray(body.certificates) && body.certificates.length > 0) {
+      liveCerts = body.certificates;
+    }
+
+    // 1. Check custom QA entries in Supabase
+    const dbResponses = await fetchAvatarResponsesFromSupabase();
+    const matchedDb = dbResponses.find(
+      (r) =>
+        r.question.toLowerCase().includes(cleanQuestion) ||
+        cleanQuestion.includes(r.question.toLowerCase())
+    );
+
+    if (matchedDb) {
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: matchedDb.answer,
+        answer: matchedDb.answer,
+        source: 'supabase_qa',
+      });
+    }
+
+    // 2. EDUCATION INQUIRY
+    if (
+      cleanQuestion.includes('education') ||
+      cleanQuestion.includes('study') ||
+      cleanQuestion.includes('studying') ||
+      cleanQuestion.includes('college') ||
+      cleanQuestion.includes('university') ||
+      cleanQuestion.includes('school') ||
+      cleanQuestion.includes('btech') ||
+      cleanQuestion.includes('b.tech') ||
+      cleanQuestion.includes('degree') ||
+      cleanQuestion.includes('diploma') ||
+      cleanQuestion.includes('polytechnic')
+    ) {
+      const eduReply = "Tushar's Educational Background:\n\n• **Secondary Education:** Completed secondary education from India International School with a percentile of 80%.\n• **Diploma:** Completed Diploma in Civil Engineering from Asansol Polytechnic with a percentile of 70%.\n• **Currently Pursuing:** B.Tech in Computer Science & Engineering (CSE) — specializing in Software Engineering, Web Development, Data Structures, and Artificial Intelligence.";
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: eduReply,
+        answer: eduReply,
+        source: 'education_handler',
+      });
+    }
+
+    // 3. GIRLFRIEND / RELATIONSHIP INQUIRY
+    if (
+      cleanQuestion.includes('girlfriend') ||
+      cleanQuestion.includes('gf') ||
+      cleanQuestion.includes('single') ||
+      cleanQuestion.includes('dating') ||
+      cleanQuestion.includes('relationship')
+    ) {
+      const gfReply = "Tushar is single. His heart belongs to his laptop... Or to speak the truth, I don't know the exact count 😉. If you want, I can ask him and get back to you 😉.";
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: gfReply,
+        answer: gfReply,
+        source: 'girlfriend_handler',
+      });
+    }
+
+    // 4. FAMILY INQUIRY
+    if (
+      cleanQuestion.includes('family') ||
+      cleanQuestion.includes('parents') ||
+      cleanQuestion.includes('mother')
+    ) {
+      const famReply = "Yes, Tushar is blessed with a loving family. He has a loving mother.";
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: famReply,
+        answer: famReply,
+        source: 'family_handler',
+      });
+    }
+
+    // 5. INTERESTS & HOBBIES INQUIRY
+    if (
+      cleanQuestion.includes('interest') ||
+      cleanQuestion.includes('interests') ||
+      cleanQuestion.includes('hobby') ||
+      cleanQuestion.includes('hobbies') ||
+      cleanQuestion.includes('passion') ||
+      cleanQuestion.includes('passionate') ||
+      cleanQuestion.includes('free time') ||
+      cleanQuestion.includes('like to do')
+    ) {
+      const interestReply = "Tushar's Interests & Hobbies:\n\n• **Technical Interests:** Building 3D Interactive Web Experiences (Three.js & WebGL), AI Agent Architectures, RAG Pipelines, and Open Source Software.\n• **Personal Hobbies:** Exploring new AI models & tools, UI/UX graphic design experimentation, tech blogging, and music.";
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: interestReply,
+        answer: interestReply,
+        source: 'interests_handler',
+      });
+    }
+
+    // 6. CODING LANGUAGES KNOWN INQUIRY
+    if (
+      cleanQuestion.includes('coding language') ||
+      cleanQuestion.includes('programming language') ||
+      cleanQuestion.includes('languages known') ||
+      cleanQuestion.includes('languages you know') ||
+      cleanQuestion.includes('languages tushar knows') ||
+      cleanQuestion.includes('languages') ||
+      cleanQuestion.includes('code in')
+    ) {
+      const langReply = "Tushar is proficient in the following programming languages & technologies:\n\n• **Coding Languages:** JavaScript (ES6+), TypeScript, Python, HTML5, CSS3, SQL\n• **Frameworks & Runtimes:** React, Next.js, Node.js, Express, FastAPI, Three.js / WebGL, Tailwind CSS\n• **Databases & Tools:** Supabase, PostgreSQL, MongoDB, Git, Docker, Vercel";
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: langReply,
+        answer: langReply,
+        source: 'languages_handler',
+      });
+    }
+
+    // 7. RESUME INQUIRY
+    if (
+      cleanQuestion.includes('resume') ||
+      cleanQuestion.includes('cv') ||
+      cleanQuestion.includes('download resume') ||
+      cleanQuestion.includes('curriculum vitae')
+    ) {
+      const resumeReply = "You can preview and download Tushar's updated resume PDF right here: /resume.pdf ! It outlines his experience in Full Stack Web Development, 3D WebGL, and AI Application Architecture.";
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: resumeReply,
+        answer: resumeReply,
+        source: 'resume_handler',
+      });
+    }
+
+    // 8. CERTIFICATION INQUIRY
+    if (
+      cleanQuestion.includes('certif') ||
+      cleanQuestion.includes('credential') ||
+      cleanQuestion.includes('license')
+    ) {
+      if (liveCerts.length > 0) {
+        let certText = `Tushar holds **${liveCerts.length} official certification(s)**:\n\n`;
+        liveCerts.forEach((c, idx) => {
+          certText += `${idx + 1}. **${c.title}**\n   • Issuer: ${c.issuer}${c.date ? ` (${c.date})` : ''}\n`;
+          if (c.url) certText += `   🔗 Verification: ${c.url}\n`;
+          certText += '\n';
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          const reply = data.choices[0]?.message?.content;
-          if (reply) {
-            return NextResponse.json({ reply });
-          }
-        }
-      } catch (err) {
-        console.warn('OpenAI call failed, using intelligent local engine:', err);
+        return NextResponse.json({
+          question: rawMessage.trim(),
+          reply: certText.trim(),
+          answer: certText.trim(),
+          source: 'supabase_certificates',
+        });
+      } else {
+        const noCertReply = "Tushar haven't added any certification yet.";
+        return NextResponse.json({
+          question: rawMessage.trim(),
+          reply: noCertReply,
+          answer: noCertReply,
+          source: 'no_certificates',
+        });
       }
     }
 
-    // Intelligent Local Knowledge Base Engine
-    let reply = '';
+    // 9. PROJECTS INQUIRY (General or Specific Project)
+    const isGeneralProjectQuery =
+      cleanQuestion.includes('project') ||
+      cleanQuestion.includes('projects') ||
+      cleanQuestion.includes('work') ||
+      cleanQuestion.includes('built') ||
+      cleanQuestion.includes('apps') ||
+      cleanQuestion.includes('portfolio');
 
-    if (query.includes('hi') || query.includes('hello') || query.includes('hey') || query.includes('who are you')) {
-      reply = `Hello! 👋 I'm **TusharAI**, Tushar Singh's personal AI assistant. I can answer questions about Tushar's skills, projects, background, or how to get in touch with him. How can I help you today?`;
-    } else if (query.includes('skill') || query.includes('tech') || query.includes('stack') || query.includes('tool')) {
-      reply = `Tushar is a versatile **Full Stack Developer** specializing in:\n\n• **Frontend:** React, Next.js, TypeScript, Tailwind CSS, JavaScript\n• **Backend:** Node.js, Express, Python, FastAPI, REST APIs\n• **Databases:** Supabase, PostgreSQL, MongoDB, MySQL\n• **AI & Tools:** OpenAI API, LangChain, Git, Docker, Vercel, Linux`;
-    } else if (query.includes('project') || query.includes('work') || query.includes('built') || query.includes('portfolio')) {
-      reply = formatProjectsForReply(projects);
-    } else if (query.includes('contact') || query.includes('email') || query.includes('reach') || query.includes('hire') || query.includes('job') || query.includes('available')) {
-      reply = `Tushar is currently **${KNOWLEDGE_BASE.status}**\n\n📫 **Email:** ${KNOWLEDGE_BASE.email}\n🐙 **GitHub:** ${KNOWLEDGE_BASE.github}\n\nYou can also send a direct message using the **Contact Form** on this website!`;
-    } else if (query.includes('journey') || query.includes('experience') || query.includes('year') || query.includes('start')) {
-      reply = `Tushar started his programming journey in **2024** (2+ years of hands-on coding). He continues to build high-performance production software and AI-powered applications.`;
-    } else if (query.includes('education') || query.includes('college') || query.includes('degree') || query.includes('university') || query.includes('study')) {
-      reply = `Tushar is pursuing his **B.Tech in Computer Science & Engineering**, with a strong foundation in Data Structures, Algorithms, Software Engineering, and Artificial Intelligence.`;
-    } else {
-      reply = `Tushar Singh is a **Full Stack Developer & AI Enthusiast** based in India 🇮🇳 (started coding in 2024). He excels in React, Next.js, Node.js, Python, Supabase, and AI integrations. Feel free to ask about his skills, projects, education, or contact details!`;
+    if (isGeneralProjectQuery) {
+      if (liveProjects.length > 0) {
+        let projectText = `Tushar has built **${liveProjects.length} project(s)** in his portfolio:\n\n`;
+        liveProjects.forEach((p, idx) => {
+          const summaryText = p.summary?.trim() || p.description;
+          const techStr = Array.isArray(p.tech_stack) ? p.tech_stack.join(', ') : 'Full Stack';
+          projectText += `${idx + 1}. **${p.title}**\n`;
+          projectText += `   • **Summary:** ${summaryText}\n`;
+          projectText += `   • **Tech Stack:** ${techStr}\n`;
+          if (p.live_url) projectText += `   🔗 **Live Demo:** ${p.live_url}\n`;
+          if (p.github_url) projectText += `   🐙 **GitHub:** ${p.github_url}\n`;
+          projectText += '\n';
+        });
+        return NextResponse.json({
+          question: rawMessage.trim(),
+          reply: projectText.trim(),
+          answer: projectText.trim(),
+          source: 'all_projects_list',
+        });
+      } else {
+        const noProjectReply = "Tushar haven't added any project yet.";
+        return NextResponse.json({
+          question: rawMessage.trim(),
+          reply: noProjectReply,
+          answer: noProjectReply,
+          source: 'no_projects',
+        });
+      }
     }
 
-    return NextResponse.json({ reply });
-  } catch (err) {
-    console.error('Chat API Error:', err);
-    return NextResponse.json({ error: 'Failed to process message' }, { status: 500 });
+    // Check if user specifically mentioned a specific project by name
+    const matchedProject = liveProjects.find((p) =>
+      cleanQuestion.includes(p.title.toLowerCase()) || p.title.toLowerCase().includes(cleanQuestion)
+    );
+
+    if (matchedProject) {
+      if (cleanQuestion.includes('github') || cleanQuestion.includes('repo') || cleanQuestion.includes('code')) {
+        if (matchedProject.github_url) {
+          const ghReply = `The GitHub repository for **${matchedProject.title}** is available here:\n${matchedProject.github_url}`;
+          return NextResponse.json({
+            question: rawMessage.trim(),
+            reply: ghReply,
+            answer: ghReply,
+            source: 'supabase_project_github',
+          });
+        }
+      }
+
+      if (cleanQuestion.includes('live') || cleanQuestion.includes('demo') || cleanQuestion.includes('link') || cleanQuestion.includes('url')) {
+        if (matchedProject.live_url) {
+          const liveReply = `You can check out the live demo of **${matchedProject.title}** here:\n${matchedProject.live_url}`;
+          return NextResponse.json({
+            question: rawMessage.trim(),
+            reply: liveReply,
+            answer: liveReply,
+            source: 'supabase_project_live',
+          });
+        }
+      }
+
+      const detailedText = matchedProject.summary?.trim() || matchedProject.description;
+      const techStackStr = Array.isArray(matchedProject.tech_stack)
+        ? matchedProject.tech_stack.join(', ')
+        : 'Full Stack';
+
+      let responseText = `**${matchedProject.title}** is a featured project built by Tushar.\n\n• **Summary:** ${detailedText}\n• **Tech Stack:** ${techStackStr}`;
+      if (matchedProject.live_url) responseText += `\n• **Live Demo:** ${matchedProject.live_url}`;
+      if (matchedProject.github_url) responseText += `\n• **GitHub:** ${matchedProject.github_url}`;
+
+      return NextResponse.json({
+        question: rawMessage.trim(),
+        reply: responseText,
+        answer: responseText,
+        source: 'supabase_project_full_details',
+      });
+    }
+
+    // 10. Gemini API generation if API Key is configured
+    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (apiKey) {
+      try {
+        const liveContext = await getLivePortfolioContextSummary();
+        const systemPrompt = `You are TusharAI, Tushar Singh's personal 3D Portfolio AI Assistant. Answer the user's question accurately, enthusiastically, and professionally in 2-3 concise sentences using the complete candidate database context (Education, Interests, Coding Languages, Projects, Certifications, Resume) below.\n\n${liveContext}`;
+
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: `${systemPrompt}\n\nVisitor Question: "${rawMessage.trim()}"` }],
+                },
+              ],
+            }),
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          const geminiAnswer = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (geminiAnswer) {
+            return NextResponse.json({
+              question: rawMessage.trim(),
+              reply: geminiAnswer.trim(),
+              answer: geminiAnswer.trim(),
+              source: 'gemini_rag',
+            });
+          }
+        }
+      } catch (geminiErr) {
+        console.warn('Gemini API fetch warning:', geminiErr);
+      }
+    }
+
+    // 11. Fallback to local knowledge engine
+    const answer = getAvatarResponse(rawMessage.trim());
+
+    return NextResponse.json({
+      question: rawMessage.trim(),
+      reply: answer,
+      answer: answer,
+      source: 'knowledge_engine',
+    });
+  } catch (error) {
+    console.error('Chat API Error:', error);
+    return NextResponse.json(
+      {
+        reply: "I'm unable to recognize that question. Please check your sentence or typo!",
+        answer: "I'm unable to recognize that question. Please check your sentence or typo!",
+      },
+      { status: 200 }
+    );
   }
 }

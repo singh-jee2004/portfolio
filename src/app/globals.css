@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 /* ── Luxury Design System Tokens ── */
@@ -23,12 +23,18 @@
   --radius:        16px;
 }
 
-/* ── Reset & Core ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset & Mobile Native Optimization ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
 
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 80px;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -42,6 +48,8 @@ body {
   font-family: 'Outfit', sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ── Custom Scrollbar ── */
@@ -105,10 +113,11 @@ body {
 .glow-lg  { box-shadow: 0 0 60px var(--accent-glow), 0 0 120px rgba(56,189,248,0.15); }
 .text-glow { text-shadow: 0 0 25px var(--accent-glow); }
 
-/* ── Interactive Buttons ── */
+/* ── Interactive Buttons (Touch & Mouse Ready) ── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 13px 30px;
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
@@ -119,6 +128,7 @@ body {
   border-radius: 99px;
   border: none;
   cursor: pointer;
+  touch-action: manipulation;
   box-shadow: 0 4px 20px var(--accent-glow);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
@@ -127,11 +137,12 @@ body {
   transform: translateY(-3px) scale(1.02);
   box-shadow: 0 10px 35px var(--accent-glow), 0 0 50px rgba(251, 191, 36, 0.4);
 }
-.btn-primary:active { transform: translateY(-1px) scale(1); }
+.btn-primary:active { transform: translateY(-1px) scale(0.98); }
 
 .btn-outline {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 13px 30px;
   background: rgba(15, 23, 42, 0.5);
@@ -143,6 +154,7 @@ body {
   border: 1.5px solid var(--border-hover);
   backdrop-filter: blur(10px);
   cursor: pointer;
+  touch-action: manipulation;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
 }
@@ -153,8 +165,9 @@ body {
   transform: translateY(-3px);
   box-shadow: 0 8px 25px var(--accent-glow);
 }
+.btn-outline:active { transform: translateY(-1px) scale(0.98); }
 
-/* ── Section Layout ── */
+/* ── Section Layout & Universal Containers ── */
 .section {
   padding: 110px 0;
   position: relative;
@@ -163,6 +176,7 @@ body {
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 24px;
+  width: 100%;
 }
 .section-label {
   font-size: 0.82rem;
@@ -178,7 +192,7 @@ body {
   border-radius: 99px;
 }
 .section-title {
-  font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
   font-weight: 900;
   line-height: 1.1;
   color: var(--text-primary);
@@ -186,7 +200,7 @@ body {
   font-family: 'Space Grotesk', sans-serif;
 }
 .section-subtitle {
-  font-size: 1.12rem;
+  font-size: clamp(0.95rem, 2vw, 1.12rem);
   color: var(--text-secondary);
   margin-top: 18px;
   max-width: 620px;
@@ -267,4 +281,41 @@ body {
     linear-gradient(rgba(245, 158, 11, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(245, 158, 11, 0.04) 1px, transparent 1px);
   background-size: 60px 60px;
+}
+
+/* ── 📱 Responsive Mobile & Cross-Device Optimization ── */
+@media (max-width: 1024px) {
+  .section {
+    padding: 80px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 60px 0;
+  }
+  .section-container {
+    padding: 0 16px;
+  }
+  .btn-primary, .btn-outline {
+    width: 100%;
+    padding: 12px 24px;
+    font-size: 0.9rem;
+  }
+  .glass-card {
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 1.8rem;
+  }
+  .section-subtitle {
+    font-size: 0.95rem;
+  }
+  .tech-badge {
+    padding: 4px 10px;
+    font-size: 0.72rem;
+  }
 }

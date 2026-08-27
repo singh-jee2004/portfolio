@@ -72,6 +72,14 @@ export default function AboutSection() {
     };
 
     fetchProjectCount();
+
+    window.addEventListener('portfolio_data_updated', fetchProjectCount);
+    window.addEventListener('storage', fetchProjectCount);
+
+    return () => {
+      window.removeEventListener('portfolio_data_updated', fetchProjectCount);
+      window.removeEventListener('storage', fetchProjectCount);
+    };
   }, []);
 
   const STATS = [

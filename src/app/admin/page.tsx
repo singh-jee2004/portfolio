@@ -11,7 +11,7 @@ import type { Project, Message, Certification } from '@/types';
 type Tab = 'projects' | 'certificates' | 'messages' | 'resume';
 
 const EMPTY_PROJECT: Omit<Project, 'id' | 'created_at'> = {
-  title: '', description: '', image_url: null,
+  title: '', description: '', summary: '', image_url: null,
   github_url: null, live_url: null, tech_stack: [], featured: false,
 };
 
@@ -204,6 +204,7 @@ export default function AdminDashboard() {
 
     setProjects(updatedProjects);
     localStorage.setItem('portfolio_projects', JSON.stringify(updatedProjects));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
 
     setForm(EMPTY_PROJECT); setEditing(null); setShowForm(false);
     showToast(editing ? 'Project updated!' : 'Project added!');
@@ -221,11 +222,12 @@ export default function AdminDashboard() {
     const updated = projects.filter(p => p.id !== id);
     setProjects(updated);
     localStorage.setItem('portfolio_projects', JSON.stringify(updated));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
     showToast('Project deleted');
   };
 
   const handleEdit = (p: Project) => {
-    setForm({ title: p.title, description: p.description, image_url: p.image_url, github_url: p.github_url, live_url: p.live_url, tech_stack: p.tech_stack, featured: p.featured });
+    setForm({ title: p.title, description: p.description, summary: p.summary || '', image_url: p.image_url, github_url: p.github_url, live_url: p.live_url, tech_stack: p.tech_stack, featured: p.featured });
     setEditing(p.id); setShowForm(true);
   };
 
@@ -278,6 +280,7 @@ export default function AdminDashboard() {
 
     setCertificates(updatedCerts);
     localStorage.setItem('portfolio_certifications', JSON.stringify(updatedCerts));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
 
     setCertForm(EMPTY_CERT); setEditingCert(null); setShowCertForm(false);
     showToast(editingCert ? 'Certificate updated!' : 'Certificate added!');
@@ -295,6 +298,7 @@ export default function AdminDashboard() {
     const updated = certificates.filter(c => c.id !== id);
     setCertificates(updated);
     localStorage.setItem('portfolio_certifications', JSON.stringify(updated));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
     showToast('Certificate deleted');
   };
 
@@ -400,8 +404,15 @@ export default function AdminDashboard() {
                     ))}
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7 }}>Description</label>
-                      <textarea className="input-field" rows={3} placeholder="What does this project do?" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ resize: 'vertical' }} />
+                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7 }}>Short Description</label>
+                      <textarea className="input-field" rows={2} placeholder="Brief tagline summary..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ resize: 'vertical' }} />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--accent)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 7, fontWeight: 700 }}>
+                        Detailed Project Summary (AI Assistant Memory &amp; RAG)
+                      </label>
+                      <textarea className="input-field" rows={4} placeholder="Write a detailed summary of key features, architecture, and impact so the AI Avatar can explain this project in depth..." value={form.summary || ''} onChange={e => setForm(f => ({ ...f, summary: e.target.value }))} style={{ resize: 'vertical' }} />
                     </div>
 
                     <div>

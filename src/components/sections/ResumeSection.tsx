@@ -9,10 +9,22 @@ import type { Certification } from '../../types';
 
 const EDUCATION = [
   {
-    degree: 'Bachelor of Computer Science & Engineering',
-    institution: 'University',
+    degree: 'B.Tech in Computer Science & Engineering (CSE)',
+    institution: 'University College',
     year: '2024 – Present',
-    description: 'Specializing in Full Stack Web Development, Software Engineering, Algorithms, and Artificial Intelligence.',
+    description: 'Specializing in Full Stack Web Development, Software Engineering, Data Structures, Algorithms, and Artificial Intelligence.',
+  },
+  {
+    degree: 'Diploma in Civil Engineering',
+    institution: 'Asansol Polytechnic',
+    year: 'Completed (70%)',
+    description: 'Engineering fundamentals, structural design, analytical problem solving, and project execution.',
+  },
+  {
+    degree: 'Secondary Education (10th Standard)',
+    institution: 'India International School',
+    year: 'Completed (80%)',
+    description: 'Core science, mathematics, and foundational academic studies.',
   },
 ];
 
@@ -21,6 +33,8 @@ export default function ResumeSection() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let supabaseChannel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null;
+
     const fetchCerts = async () => {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -44,7 +58,34 @@ export default function ResumeSection() {
         setLoading(false);
       }
     };
+
     fetchCerts();
+
+    window.addEventListener('portfolio_data_updated', fetchCerts);
+    window.addEventListener('storage', fetchCerts);
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://'))) {
+      try {
+        const supabase = createClient();
+        supabaseChannel = supabase
+          .channel('realtime-certs-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'certificates' }, () => {
+            fetchCerts();
+          })
+          .subscribe();
+      } catch {
+        // ignore
+      }
+    }
+
+    return () => {
+      window.removeEventListener('portfolio_data_updated', fetchCerts);
+      window.removeEventListener('storage', fetchCerts);
+      if (supabaseChannel) {
+        try { supabaseChannel.unsubscribe(); } catch {}
+      }
+    };
   }, []);
 
   return (
