@@ -216,7 +216,7 @@ export default function AdminDashboard() {
 
     if (!confirm('Delete this project?')) return;
     if (isConfigured) {
-      try { await supabase.from('projects').delete().eq('id', id); } catch {}
+      try { await supabase.from('projects').delete().eq('id', id); } catch { }
     }
     const updated = projects.filter(p => p.id !== id);
     setProjects(updated);
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
 
     if (!confirm('Delete this certificate?')) return;
     if (isConfigured) {
-      try { await supabase.from('certificates').delete().eq('id', id); } catch {}
+      try { await supabase.from('certificates').delete().eq('id', id); } catch { }
     }
     const updated = certificates.filter(c => c.id !== id);
     setCertificates(updated);
@@ -341,7 +341,7 @@ export default function AdminDashboard() {
           </a>
           <button onClick={async () => {
             localStorage.removeItem('admin_session');
-            if (isConfigured) { try { await supabase.auth.signOut(); } catch {} }
+            if (isConfigured) { try { await supabase.auth.signOut(); } catch { } }
             window.location.href = '/admin/login';
           }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: '#f87171', fontFamily: "'Outfit',sans-serif", fontSize: '0.88rem', width: '100%', textAlign: 'left' }}>
             <LogOut size={16} /> Sign Out
@@ -596,7 +596,7 @@ export default function AdminDashboard() {
               <h1 style={{ fontWeight: 800, fontSize: '1.6rem', fontFamily: "'Space Grotesk',sans-serif" }}>Resume & Files</h1>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>Upload your resume PDF and manage certifications</p>
             </div>
-            
+
             <div className="glass-card" style={{ padding: 48, textAlign: 'center', border: '2px dashed var(--border-hover)' }}>
               <input
                 type="file"
@@ -606,7 +606,7 @@ export default function AdminDashboard() {
                 onChange={handleResumeUpload}
                 disabled={uploadingResume}
               />
-              
+
               <Upload size={48} style={{ color: 'var(--accent)', margin: '0 auto 16px', opacity: uploadingResume ? 0.5 : 1 }} />
               <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: 8 }}>Upload Resume PDF</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: 24, maxWidth: 500, margin: '0 auto 24px' }}>

@@ -55,6 +55,14 @@ body {
 /* ── Selection ── */
 ::selection { background: var(--accent-glow); color: var(--accent-light); }
 
+/* ── Skill Bar Progress Fill ── */
+.skill-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #38bdf8 100%);
+  border-radius: 99px;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+}
+
 /* ── Vibrant Gradient Text ── */
 .gradient-text {
   background: linear-gradient(135deg, #fde047 0%, #f59e0b 45%, #38bdf8 100%);

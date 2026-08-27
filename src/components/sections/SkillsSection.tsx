@@ -23,7 +23,7 @@ const SKILLS: Skill[] = [
   // Backend
   { name: 'Node.js', icon: '🟢', level: 85, category: 'backend' },
   { name: 'Express.js', icon: '🚂', level: 82, category: 'backend' },
-  { name: 'Python', icon: '🐍', level: 80, category: 'backend' },
+  { name: 'Python', icon: '🐍', level: 88, category: 'backend' },
   { name: 'FastAPI', icon: '⚡', level: 75, category: 'backend' },
   { name: 'REST APIs', icon: '🔗', level: 90, category: 'backend' },
   // Database
@@ -131,8 +131,9 @@ export default function SkillsSection() {
               <motion.div
                 key={skill.name}
                 initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.04 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ delay: i * 0.03 }}
                 className="glass-card"
                 style={{ padding: '20px 22px', cursor: 'default' }}
                 whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
@@ -153,14 +154,20 @@ export default function SkillsSection() {
                   </span>
                 </div>
 
-                {/* Progress bar */}
-                <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
+                {/* Progress bar track */}
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden', width: '100%' }}>
                   <motion.div
                     className="skill-bar-fill"
-                    initial={{ width: 0 }}
+                    initial={{ width: '0%' }}
                     whileInView={{ width: `${skill.level}%` }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1, delay: i * 0.04, ease: 'easeOut' }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 1.0, delay: i * 0.04, ease: 'easeOut' }}
+                    style={{
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 60%, #38bdf8 100%)',
+                      borderRadius: 99,
+                      boxShadow: '0 0 10px rgba(245, 158, 11, 0.5)',
+                    }}
                   />
                 </div>
 
