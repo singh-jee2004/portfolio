@@ -31,7 +31,7 @@ export const PORTFOLIO_KNOWLEDGE: AvatarKnowledgeItem[] = [
   {
     category: 'education',
     question: 'What is your educational background?',
-    answer: "Tushar's Educational Background:\n\n• Has completed secondary education from INDIA INTERNATIONAL SCHOOL with a Percentile of 80%\n\n• He has also Completed Diploma in Civil Engineering from Asansol Polytechnic with a percentile of 70%\n\n• **Currently Pursuing:** B.Tech in Computer Science & Engineering (CSE) with specializations in Software Engineering, Web Technologies, Data Structures & Algorithms, and Artificial Intelligence.",
+    answer: "Tushar's Educational Background:\n\n• Has completed secondary education from INDIA INTERNATIONAL SCHOOL with a Percentile of 80% \n\n• He has also Completed Diploma in Civil Engineering from Asansol Polytechnic with a percentile of 70% \n\n• **Currently Pursuing:** B.Tech in Computer Science & Engineering (CSE) with specializations in Software Engineering, Web Technologies, Data Structures & Algorithms, and Artificial Intelligence.",
     keywords: ['education', 'educational', 'degree', 'study', 'studying', 'college', 'university', 'student', 'qualification', 'high school', 'btech', 'b.tech', 'school', 'polytechnic', 'diploma'],
   },
   {
@@ -60,16 +60,16 @@ export const PORTFOLIO_KNOWLEDGE: AvatarKnowledgeItem[] = [
   },
   {
     category: 'girlfriend',
-    question: 'Does Tushar have a girlfriend?',
-    answer: "Tushar is single. His heart belongs to his laptop. Or speaking truth I don't know the exact count 😉. If you want I can ask him and get back to you 😉.",
-    keywords: ['girlfriend', 'gf', 'single', 'dating', 'relationship'],
+    question: 'Do Tushar have a girlfriend?',
+    answer: "Tushar is single. His heart belongs to his laptop. Or speaking truth i don't know the exact count 😉. If u want I can ask him and can get back to you 😉.",
+    keywords: ['girlfriend', 'gf', 'single'],
   },
   {
     category: 'family',
-    question: 'Does Tushar have a family?',
+    question: 'Do Tushar have a family?',
     answer: "Yes, Tushar is blessed with a loving family. He has a loving mother.",
-    keywords: ['family', 'parents', 'mother', 'sister', 'niece', 'relative'],
-  },
+    keywords: ['family', 'parents', 'mother', 'sister', 'niece'],
+  }
 ];
 
 /**
@@ -100,6 +100,6 @@ export function getAvatarResponse(query: string): string {
     return bestMatch.answer;
   }
 
-  // General fallback response for unrecognized queries
-  return "I'm unable to recognize that question. Please check your sentence or typo!";
+  // General fallback response
+  return `Thanks for asking! I'm Tushar's AI representative. Tushar is a Full Stack & AI Developer pursuing B.Tech in CSE, skilled in TypeScript, Python, Next.js, Three.js, and Supabase. Feel free to ask about his education, interests, coding languages, projects, or contact info!`;
 }
