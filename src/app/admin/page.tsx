@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import SkullLoader from '@/components/ui/SkullLoader';
 import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home, Award } from 'lucide-react';
@@ -66,7 +67,7 @@ export default function AdminDashboard() {
       }
     };
     verifySession();
-  }, [isConfigured, router]);
+  }, [isConfigured, router, supabase.auth]);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -119,56 +120,64 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    let loadedProjects: Project[] = [];
-    let loadedMessages: Message[] = [];
-    let loadedCerts: Certification[] = [];
+  useEffect(() => {
+    let cancelled = false;
 
-    if (isConfigured) {
-      try {
-        const [p, m, c] = await Promise.all([
-          supabase.from('projects').select('*').order('created_at', { ascending: false }),
-          supabase.from('messages').select('*').order('created_at', { ascending: false }),
-          supabase.from('certificates').select('*').order('created_at', { ascending: false }),
-        ]);
-        if (p.data && p.data.length > 0) loadedProjects = p.data as Project[];
-        if (m.data && m.data.length > 0) loadedMessages = m.data as Message[];
-        if (c.data && c.data.length > 0) loadedCerts = c.data as Certification[];
-      } catch {
-        // Fallback to local storage if network or DB request fails
+    const fetchData = async () => {
+      setLoading(true);
+      let loadedProjects: Project[] = [];
+      let loadedMessages: Message[] = [];
+      let loadedCerts: Certification[] = [];
+
+      if (isConfigured) {
+        try {
+          const [p, m, c] = await Promise.all([
+            supabase.from('projects').select('*').order('created_at', { ascending: false }),
+            supabase.from('messages').select('*').order('created_at', { ascending: false }),
+            supabase.from('certificates').select('*').order('created_at', { ascending: false }),
+          ]);
+          if (p.data && p.data.length > 0) loadedProjects = p.data as Project[];
+          if (m.data && m.data.length > 0) loadedMessages = m.data as Message[];
+          if (c.data && c.data.length > 0) loadedCerts = c.data as Certification[];
+        } catch {
+          // Fallback to local storage if network or DB request fails
+        }
       }
-    }
 
-    if (loadedProjects.length === 0) {
-      const localP = localStorage.getItem('portfolio_projects');
-      if (localP) {
-        try { loadedProjects = JSON.parse(localP); } catch { loadedProjects = []; }
+      if (loadedProjects.length === 0) {
+        const localP = localStorage.getItem('portfolio_projects');
+        if (localP) {
+          try { loadedProjects = JSON.parse(localP); } catch { loadedProjects = []; }
+        }
       }
-    }
 
-    if (loadedMessages.length === 0) {
-      const localM = localStorage.getItem('portfolio_messages');
-      if (localM) {
-        try { loadedMessages = JSON.parse(localM); } catch { loadedMessages = []; }
+      if (loadedMessages.length === 0) {
+        const localM = localStorage.getItem('portfolio_messages');
+        if (localM) {
+          try { loadedMessages = JSON.parse(localM); } catch { loadedMessages = []; }
+        }
       }
-    }
 
-    if (loadedCerts.length === 0) {
-      const local = localStorage.getItem('portfolio_certifications');
-      if (local) {
-        try { loadedCerts = JSON.parse(local); } catch { loadedCerts = []; }
+      if (loadedCerts.length === 0) {
+        const local = localStorage.getItem('portfolio_certifications');
+        if (local) {
+          try { loadedCerts = JSON.parse(local); } catch { loadedCerts = []; }
+        }
       }
-    }
 
-    setProjects(loadedProjects);
-    setMessages(loadedMessages);
-    setCertificates(loadedCerts);
-    setLoading(false);
+      if (!cancelled) {
+        setProjects(loadedProjects);
+        setMessages(loadedMessages);
+        setCertificates(loadedCerts);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfigured]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Project Handlers
   const handleSave = async () => {
@@ -179,27 +188,55 @@ export default function AdminDashboard() {
     setSaving(true);
     let updatedProjects: Project[] = [...projects];
 
+    let supabaseSuccess = false;
     if (isConfigured) {
       try {
         if (editing) {
-          await supabase.from('projects').update(form).eq('id', editing);
+          const { error } = await supabase.from('projects').update(form).eq('id', editing);
+          if (error) {
+            console.error('Supabase update error:', error);
+            showToast(`⚠️ Cloud save failed: ${error.message}. Saved locally only.`);
+          } else {
+            supabaseSuccess = true;
+          }
         } else {
-          await supabase.from('projects').insert(form);
+          const { error } = await supabase.from('projects').insert(form);
+          if (error) {
+            console.error('Supabase insert error:', error);
+            showToast(`⚠️ Cloud save failed: ${error.message}. Saved locally only.`);
+          } else {
+            supabaseSuccess = true;
+          }
         }
-      } catch {
-        // Continue to update local storage
+      } catch (err) {
+        console.error('Supabase network error:', err);
+        showToast('⚠️ Cloud save failed (network error). Saved locally only.');
       }
     }
 
-    if (editing) {
-      updatedProjects = updatedProjects.map(p => p.id === editing ? { ...p, ...form } : p);
-    } else {
-      const newProj: Project = {
-        id: Date.now().toString(),
-        ...form,
-        created_at: new Date().toISOString(),
-      };
-      updatedProjects = [newProj, ...updatedProjects];
+    // If Supabase succeeded, re-fetch from DB to get the server-generated id
+    if (supabaseSuccess) {
+      try {
+        const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+          updatedProjects = data as Project[];
+        }
+      } catch {
+        // Fall through to local update
+      }
+    }
+
+    if (!supabaseSuccess) {
+      if (editing) {
+        updatedProjects = updatedProjects.map(p => p.id === editing ? { ...p, ...form } : p);
+      } else {
+        const newProj: Project = {
+          id: Date.now().toString(),
+          ...form,
+          created_at: new Date().toISOString(),
+        };
+        updatedProjects = [newProj, ...updatedProjects];
+      }
     }
 
     setProjects(updatedProjects);
@@ -207,7 +244,7 @@ export default function AdminDashboard() {
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
 
     setForm(EMPTY_PROJECT); setEditing(null); setShowForm(false);
-    showToast(editing ? 'Project updated!' : 'Project added!');
+    if (supabaseSuccess) showToast(editing ? 'Project updated (synced to cloud)!' : 'Project added (synced to cloud)!');
     setSaving(false);
   };
 
@@ -256,26 +293,53 @@ export default function AdminDashboard() {
 
     let updatedCerts: Certification[] = [...certificates];
 
+    let certSupabaseSuccess = false;
     if (isConfigured) {
       try {
         if (editingCert) {
-          await supabase.from('certificates').update(certData).eq('id', editingCert);
+          const { error } = await supabase.from('certificates').update(certData).eq('id', editingCert);
+          if (error) {
+            console.error('Supabase cert update error:', error);
+            showToast(`⚠️ Cloud save failed: ${error.message}. Saved locally only.`);
+          } else {
+            certSupabaseSuccess = true;
+          }
         } else {
-          await supabase.from('certificates').insert(certData);
+          const { error } = await supabase.from('certificates').insert(certData);
+          if (error) {
+            console.error('Supabase cert insert error:', error);
+            showToast(`⚠️ Cloud save failed: ${error.message}. Saved locally only.`);
+          } else {
+            certSupabaseSuccess = true;
+          }
         }
-      } catch {
-        // Fallback to local
+      } catch (err) {
+        console.error('Supabase cert network error:', err);
+        showToast('⚠️ Cloud save failed (network error). Saved locally only.');
       }
     }
 
-    if (editingCert) {
-      updatedCerts = updatedCerts.map(c => c.id === editingCert ? { ...c, ...certData } : c);
-    } else {
-      const newCert: Certification = {
-        id: Date.now().toString(),
-        ...certData,
-      };
-      updatedCerts = [newCert, ...updatedCerts];
+    if (certSupabaseSuccess) {
+      try {
+        const { data } = await supabase.from('certificates').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+          updatedCerts = data as Certification[];
+        }
+      } catch {
+        // Fall through
+      }
+    }
+
+    if (!certSupabaseSuccess) {
+      if (editingCert) {
+        updatedCerts = updatedCerts.map(c => c.id === editingCert ? { ...c, ...certData } : c);
+      } else {
+        const newCert: Certification = {
+          id: Date.now().toString(),
+          ...certData,
+        };
+        updatedCerts = [newCert, ...updatedCerts];
+      }
     }
 
     setCertificates(updatedCerts);
@@ -283,7 +347,7 @@ export default function AdminDashboard() {
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
 
     setCertForm(EMPTY_CERT); setEditingCert(null); setShowCertForm(false);
-    showToast(editingCert ? 'Certificate updated!' : 'Certificate added!');
+    if (certSupabaseSuccess) showToast(editingCert ? 'Certificate updated (synced to cloud)!' : 'Certificate added (synced to cloud)!');
     setSaving(false);
   };
 
@@ -340,13 +404,13 @@ export default function AdminDashboard() {
         </nav>
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
             <Home size={16} /> View Site
-          </a>
+          </Link>
           <button onClick={async () => {
             localStorage.removeItem('admin_session');
             if (isConfigured) { try { await supabase.auth.signOut(); } catch { } }
-            window.location.href = '/admin/login';
+            router.push('/admin/login');
           }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: '#f87171', fontFamily: "'Outfit',sans-serif", fontSize: '0.88rem', width: '100%', textAlign: 'left' }}>
             <LogOut size={16} /> Sign Out
           </button>
