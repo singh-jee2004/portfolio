@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isConfigured = Boolean(supabaseUrl && (supabaseUrl.startsWith('http://') || supabaseUrl.startsWith('https://')));
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Strict session check: Redirect to login if user signed out
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function AdminDashboard() {
       }
     };
     verifySession();
-  }, [isConfigured, router, supabase.auth]);
+  }, [isConfigured, router, supabase]);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
