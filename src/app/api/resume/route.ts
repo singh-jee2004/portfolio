@@ -45,3 +45,4 @@ export async function GET() {
     return new NextResponse('Resume not found', { status: 404 });
   }
 }
+

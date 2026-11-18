@@ -147,7 +147,7 @@ export default function ResumeSection() {
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
             <a
-              href="/resume.pdf"
+              href="/api/resume"
               target="_blank"
               rel="noopener noreferrer"
               download="Tushar_Singh_Resume.pdf"

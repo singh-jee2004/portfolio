@@ -828,7 +828,7 @@ export default function AdminDashboard() {
                 </label>
 
                 <a
-                  href="/resume.pdf"
+                  href="/api/resume"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-outline"
