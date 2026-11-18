@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { createAdminClient } from '../../../lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
@@ -44,32 +44,38 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // 4. Save locally to public/resume.pdf
-    const publicDir = path.join(process.cwd(), 'public');
-    await mkdir(publicDir, { recursive: true });
-    const filePath = path.join(publicDir, 'resume.pdf');
-    await writeFile(filePath, buffer);
-
-    // 5. Attempt upload to Supabase Storage if configured
-    let supabaseUrl: string | null = null;
+    // 4. Safely save locally in dev environment (ignore EROFS on Vercel)
     try {
-      const supabase = createAdminClient();
-      const { data, error } = await supabase.storage
-        .from('resumes')
-        .upload('resume.pdf', buffer, { contentType: 'application/pdf', upsert: true });
-
-      if (!error && data) {
-        const publicUrlData = supabase.storage.from('resumes').getPublicUrl('resume.pdf');
-        supabaseUrl = publicUrlData.data.publicUrl;
-      }
+      const publicDir = path.join(process.cwd(), 'public');
+      await mkdir(publicDir, { recursive: true });
+      const filePath = path.join(publicDir, 'resume.pdf');
+      await writeFile(filePath, buffer);
     } catch {
-      // Supabase storage bucket fallback
+      // Ignored on read-only environments like Vercel
+    }
+
+    // 5. Store in Supabase site_settings table (accessible everywhere in the cloud)
+    let savedToCloud = false;
+    try {
+      const supabase = createServerClient();
+      const base64Data = buffer.toString('base64');
+      const { error } = await supabase.from('site_settings').upsert({
+        key: 'resume_pdf',
+        value: base64Data,
+        updated_at: new Date().toISOString(),
+      });
+      if (!error) savedToCloud = true;
+      else console.warn('Supabase site_settings save error:', error);
+    } catch (dbErr) {
+      console.warn('Supabase site_settings save exception:', dbErr);
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Resume updated successfully!',
-      url: supabaseUrl || '/resume.pdf',
+      message: savedToCloud
+        ? 'Resume updated and synced to cloud successfully!'
+        : 'Resume saved locally!',
+      url: '/resume.pdf',
     });
   } catch (err) {
     console.error('Resume upload error:', err);
