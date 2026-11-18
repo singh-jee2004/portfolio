@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import SkullLoader from '@/components/ui/SkullLoader';
-import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home, Award } from 'lucide-react';
+import { Plus, Trash2, Edit3, Eye, MessageSquare, FolderOpen, LogOut, Upload, X, Check, Code2, Home, Award, CloudUpload, RefreshCw } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Project, Message, Certification } from '@/types';
 
@@ -42,6 +42,8 @@ export default function AdminDashboard() {
   const [showCertForm, setShowCertForm] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [hasLocalData, setHasLocalData] = useState(false);
   const [toast, setToast] = useState('');
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeMsg, setResumeMsg] = useState('');
@@ -165,10 +167,22 @@ export default function AdminDashboard() {
         }
       }
 
+      // Check if local storage holds items that might need syncing to cloud
+      let localHasItems = false;
+      const lp = localStorage.getItem('portfolio_projects');
+      const lc = localStorage.getItem('portfolio_certifications');
+      if (lp) {
+        try { if (JSON.parse(lp).length > 0) localHasItems = true; } catch {}
+      }
+      if (lc) {
+        try { if (JSON.parse(lc).length > 0) localHasItems = true; } catch {}
+      }
+
       if (!cancelled) {
         setProjects(loadedProjects);
         setMessages(loadedMessages);
         setCertificates(loadedCerts);
+        setHasLocalData(localHasItems);
         setLoading(false);
       }
     };
@@ -178,6 +192,72 @@ export default function AdminDashboard() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfigured]);
+
+  const handleSyncToCloud = async () => {
+    if (!isConfigured) {
+      showToast('Supabase is not configured yet');
+      return;
+    }
+    setSyncing(true);
+    let countP = 0;
+    let countC = 0;
+    try {
+      const localP = localStorage.getItem('portfolio_projects');
+      if (localP) {
+        const projs: Project[] = JSON.parse(localP);
+        for (const p of projs) {
+          const { error } = await supabase.from('projects').insert({
+            title: p.title,
+            description: p.description || '',
+            summary: p.summary || null,
+            image_url: p.image_url || null,
+            github_url: p.github_url || null,
+            live_url: p.live_url || null,
+            tech_stack: Array.isArray(p.tech_stack) ? p.tech_stack : [],
+            featured: Boolean(p.featured),
+          });
+          if (!error) countP++;
+        }
+      }
+
+      const localC = localStorage.getItem('portfolio_certifications');
+      if (localC) {
+        const certs: Certification[] = JSON.parse(localC);
+        for (const c of certs) {
+          const { error } = await supabase.from('certificates').insert({
+            title: c.title,
+            issuer: c.issuer || 'Verified Provider',
+            date: c.date || '',
+            url: c.url || null,
+            image_url: c.image_url || null,
+          });
+          if (!error) countC++;
+        }
+      }
+
+      // Re-fetch all data directly from Supabase
+      const [p, c] = await Promise.all([
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
+        supabase.from('certificates').select('*').order('created_at', { ascending: false }),
+      ]);
+      if (p.data && p.data.length > 0) {
+        setProjects(p.data as Project[]);
+        localStorage.setItem('portfolio_projects', JSON.stringify(p.data));
+      }
+      if (c.data && c.data.length > 0) {
+        setCertificates(c.data as Certification[]);
+        localStorage.setItem('portfolio_certifications', JSON.stringify(c.data));
+      }
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('portfolio_data_updated'));
+
+      showToast(`☁️ Synced ${countP} project(s) & ${countC} cert(s) to Cloud!`);
+    } catch (err) {
+      console.error('Sync failed:', err);
+      showToast('⚠️ Cloud sync encountered an error');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Project Handlers
   const handleSave = async () => {
@@ -435,15 +515,45 @@ export default function AdminDashboard() {
         {/* ── PROJECTS TAB ── */}
         {tab === 'projects' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <h1 style={{ fontWeight: 800, fontSize: '1.6rem', fontFamily: "'Space Grotesk',sans-serif" }}>Projects</h1>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>{projects.length} projects in your portfolio</p>
               </div>
-              <button onClick={() => { setForm(EMPTY_PROJECT); setEditing(null); setShowForm(true); }} className="btn-primary">
-                <Plus size={17} /> Add Project
-              </button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {isConfigured && (
+                  <button
+                    onClick={handleSyncToCloud}
+                    disabled={syncing}
+                    className="btn-outline"
+                    title="Upload locally stored projects to Supabase Cloud"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, borderColor: 'var(--accent)' }}
+                  >
+                    {syncing ? <RefreshCw size={16} className="animate-spin" /> : <CloudUpload size={16} color="var(--accent)" />}
+                    {syncing ? 'Syncing...' : 'Sync to Cloud'}
+                  </button>
+                )}
+                <button onClick={() => { setForm(EMPTY_PROJECT); setEditing(null); setShowForm(true); }} className="btn-primary">
+                  <Plus size={17} /> Add Project
+                </button>
+              </div>
             </div>
+
+            {hasLocalData && isConfigured && (
+              <div style={{ marginBottom: 24, padding: '14px 20px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ fontSize: '0.88rem', color: 'var(--accent-light)' }}>
+                  💡 <strong>Local projects detected:</strong> Your projects are currently stored only in this browser. Click &quot;Sync to Cloud&quot; so they become visible on all devices!
+                </div>
+                <button
+                  onClick={handleSyncToCloud}
+                  disabled={syncing}
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.82rem' }}
+                >
+                  {syncing ? 'Uploading...' : '☁️ Push to Cloud Now'}
+                </button>
+              </div>
+            )}
 
             {/* Project Form Modal */}
             {showForm && (
@@ -547,14 +657,28 @@ export default function AdminDashboard() {
         {/* ── CERTIFICATIONS TAB ── */}
         {tab === 'certificates' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <h1 style={{ fontWeight: 800, fontSize: '1.6rem', fontFamily: "'Space Grotesk',sans-serif" }}>Certifications</h1>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>{certificates.length} certifications on your resume</p>
               </div>
-              <button onClick={() => { setCertForm(EMPTY_CERT); setEditingCert(null); setShowCertForm(true); }} className="btn-primary">
-                <Plus size={17} /> Add Certification
-              </button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {isConfigured && (
+                  <button
+                    onClick={handleSyncToCloud}
+                    disabled={syncing}
+                    className="btn-outline"
+                    title="Upload locally stored certificates to Supabase Cloud"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, borderColor: 'var(--accent)' }}
+                  >
+                    {syncing ? <RefreshCw size={16} className="animate-spin" /> : <CloudUpload size={16} color="var(--accent)" />}
+                    {syncing ? 'Syncing...' : 'Sync to Cloud'}
+                  </button>
+                )}
+                <button onClick={() => { setCertForm(EMPTY_CERT); setEditingCert(null); setShowCertForm(true); }} className="btn-primary">
+                  <Plus size={17} /> Add Certification
+                </button>
+              </div>
             </div>
 
             {/* Certification Form Modal */}
